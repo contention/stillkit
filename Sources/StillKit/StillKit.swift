@@ -80,9 +80,12 @@ public enum StillFont {
         return UIFontMetrics(forTextStyle: style).scaledFont(for: font)
     }
 
-    /// Game counters and timers: rounded, light, monospaced digits.
-    public static func numeral(size: CGFloat = 64) -> UIFont {
-        let system = UIFont.monospacedDigitSystemFont(ofSize: size, weight: .light)
+    /// Game counters and timers: rounded, monospaced digits.
+    ///
+    /// Medium by default, so a score reads at a glance in the middle of play. Pass `.light`
+    /// for a large number you look at rather than glance at, such as a clock face.
+    public static func numeral(size: CGFloat = 64, weight: UIFont.Weight = .medium) -> UIFont {
+        let system = UIFont.monospacedDigitSystemFont(ofSize: size, weight: weight)
         let font = system.fontDescriptor.withDesign(.rounded)
             .map { UIFont(descriptor: $0, size: size) } ?? system
         return UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: font)
@@ -276,16 +279,35 @@ public enum StillMotion {
 
 public enum StillHaptics {
     @MainActor private static let soft = UIImpactFeedbackGenerator(style: .soft)
+    @MainActor private static let light = UIImpactFeedbackGenerator(style: .light)
     @MainActor private static let selection = UISelectionFeedbackGenerator()
+
+    /// Readies the haptic engine so the first haptic plays on time. Call when an interaction
+    /// begins, such as a drag starting. Each haptic below also readies the next one.
+    @MainActor public static func prepare() {
+        soft.prepare()
+        light.prepare()
+        selection.prepare()
+    }
 
     /// Contact: a piece lands, a toggle settles.
     @MainActor public static func touch(_ intensity: CGFloat = 0.6) {
         soft.impactOccurred(intensity: intensity)
+        soft.prepare()
     }
 
-    /// Detents: a dial clicks, a slider passes a step.
+    /// A snap: a dragged piece finds a spot where it fits. A short, crisp tap that feels
+    /// different from `touch()`, so snapping and landing never blur together. Use this, not
+    /// `tick()`, for anything under a moving finger: the selection haptic is too faint there.
+    @MainActor public static func snap(_ intensity: CGFloat = 0.7) {
+        light.impactOccurred(intensity: intensity)
+        light.prepare()
+    }
+
+    /// Detents in controls: a picker passes a step, a stepper changes. The faintest haptic.
     @MainActor public static func tick() {
         selection.selectionChanged()
+        selection.prepare()
     }
 }
 

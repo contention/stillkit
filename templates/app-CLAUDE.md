@@ -11,4 +11,3 @@ explain why. Read them before changing any UI.
 - Corners: `stillCorners(_:)` with `StillRadius`. Motion: `StillMotion`. Haptics: `StillHaptics`.
 - iOS 26: no custom navigation bar, tab bar or toolbar backgrounds or tints.
 - Never restyle alerts, menus, keyboards, system sheet chrome or destructive red. Never set `overrideUserInterfaceStyle`.
-- The promise sheet (`StillPromise.present`) stays reachable from settings.

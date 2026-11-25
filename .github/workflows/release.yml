@@ -1,0 +1,70 @@
+name: Release
+
+# Tags and releases StillKit whenever VERSION changes on main.
+#
+# To release: put the new version in VERSION (for example 0.1.0) in the same commit as the
+# changes it ships, and push to main. This builds the package, then creates the tag and a
+# GitHub release with generated notes. Tags have no "v" prefix, matching the existing ones.
+#
+# A version that is already tagged is skipped, so reverting VERSION never re-releases.
+# A version lower than the latest tag fails the run.
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(tr -d '[:space:]' < VERSION)
+
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error file=VERSION::'$version' is not a version like 1.2.3"
+            exit 1
+          fi
+
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            echo "::notice file=VERSION::$version is already tagged, so there is nothing to release."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          latest=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)
+          highest=$(printf '%s\n%s\n' "$latest" "$version" | sort -V | tail -n 1)
+          if [[ -n "$latest" && "$highest" != "$version" ]]; then
+            echo "::error file=VERSION::$version is lower than the latest tag, $latest"
+            exit 1
+          fi
+
+          echo "Releasing $version (latest tag: ${latest:-none})"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        if: steps.version.outputs.release == 'true'
+        run: xcodebuild -scheme StillKit -destination 'generic/platform=iOS Simulator' build
+
+      - name: Tag and release
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --generate-notes

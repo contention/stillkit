@@ -51,7 +51,8 @@ Every text pair above holds 4.5:1 in both modes (`label-tertiary` is placeholder
 SF Pro, the system font, with Dynamic Type. The series signature is **SF Pro Rounded for display text and numbers**: large titles, sheet titles, level names and game counters are rounded; everything you read is plain SF Pro.
 
 - Use UIKit text styles, never fixed sizes: `large-title`, `title-1`, `title-2`, `title-3` in the rounded design; `headline`, `body`, `callout`, `subheadline`, `footnote`, `caption` in the default design.
-- Display weights are a step lighter than Apple's defaults (semibold, medium), and game counters use `numeral`: rounded, light, monospaced digits. Calm reads lighter.
+- Display weights are a step lighter than Apple's defaults (semibold, medium). Calm reads lighter.
+- Game counters use `numeral`: rounded, medium, monospaced digits. A score is glanced at mid-move, so it needs the weight to read at once; light is for big numbers you look at rather than glance at, like a clock.
 - Set `adjustsFontForContentSizeCategory = true` on every label. Test at the largest accessibility size.
 - Sentence case everywhere, including titles and buttons.
 
@@ -62,6 +63,7 @@ SF Pro, the system font, with Dynamic Type. The series signature is **SF Pro Rou
 - Radii: `radius-sm` 8, `radius-md` 12, `radius-lg` 20, `radius-xl` 32, `radius-pill` for capsules. Nested shapes are concentric: inner radius = outer radius minus the padding between them.
 - Separate surfaces by a step in ground colour (`grouped-background` to `grouped-surface`), not by borders or shadows.
 - Shadows: only `shadow-lift`, only on something being touched or dragged.
+- **Counters sit on pebbles**: a label and a number on a capsule at least 44pt tall, label in `label-secondary`, number in rounded `title-3`. The pebble's ground says how loud it is: `background-secondary` for a counter that is always there (a best score), `tint-soft` for a moment worth noticing (a best just beaten), filled `tint` for the one thing happening right now. Never more than one filled pebble at a time.
 
 ## Spacing
 
@@ -76,12 +78,14 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 
 ## Haptics and sound
 
-- Haptics: `UIImpactFeedbackGenerator(style: .soft)` at intensity 0.5 to 0.8 for contact; `UISelectionFeedbackGenerator` for detents. Never `.heavy` or `.rigid`. `.success` notification feedback at most once per session, for finishing something.
+- Haptics: `UIImpactFeedbackGenerator(style: .soft)` at intensity 0.5 to 0.8 for contact (`touch`); `.light` at about 0.7 for a dragged piece snapping into place (`snap`); `UISelectionFeedbackGenerator` for detents in controls (`tick`). The selection haptic is too faint to feel under a moving finger, so never use it for a snap. Never `.heavy` or `.rigid`. `.success` notification feedback at most once per session, for finishing something.
 - Sound: off by default. When on, use `AVAudioSession` category `.ambient`, so the Ring/Silent switch mutes it and the person's music keeps playing.
 
 ## Iconography
 
 - SF Symbols only in UI, at the weight of the text beside them, rendering mode `.hierarchical`, coloured by `tint` or `label-secondary`. No multicolour symbols.
+- Use a word instead of a symbol when the symbol would mislead. `plus` means making something you keep, so it is wrong for a new round of a game; circular arrows read as undo. A new round is "New game", in words.
+- Actions live in the system navigation bar or toolbar, drawn as the system draws them, not in custom floating buttons.
 - App icons share one template: `night` ground, a single simple glyph in `mist`, at most one accent in `sage` or `moss`. Provide the dark and tinted variants iOS asks for; the dark variant uses `night-900`.
 - No emoji in UI.
 
@@ -91,20 +95,15 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 - No exclamation marks, no streaks, no scores you can lose, no urgency ("Don't miss…", "Hurry").
 - Say less. A toy with one hint line is better than a tutorial.
 
-## The promise
-
-Every app carries the same promise sheet (`StillPromise.present(from:)`), reached from the app's settings or an info button, with the same words: **Free. No ads. No tracking. No account. Ever.** It is the most recognisable thing in the series after the colour.
-
 ## Recognisability checklist
 
-A new app belongs to the series when it has all six:
+A new app belongs to the series when it has all five:
 
 1. Grounds are `mist-50`/`mist-100` or `night-900`/`night`, never white or black; toys use the neat `canvas`.
 2. The window tint is `tint`.
 3. Display text and numbers are SF Pro Rounded.
 4. Buttons are capsules; corners are continuous.
 5. The app icon follows the template.
-6. The promise sheet is one tap from settings.
 
 ## Accessibility
 

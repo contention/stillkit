@@ -62,6 +62,7 @@ Navigation bars, toolbars and tab bars float above content as glass, and Apple's
 
 - Do not set bar backgrounds or bar button tint colours. `StillAppearance` sets titles only.
 - If one bar action must be prominent (a single Done), use the system's prominent bar button style, which takes the window tint.
+- Put a screen's actions in the bar as system bar buttons rather than custom floating buttons, even on a game screen. Unrelated actions get their own glass: separate them with a fixed space (`UIBarButtonItem.fixedSpace(_:)`, or `ToolbarSpacer(.fixed)` in SwiftUI).
 - For your own floating controls in toys, use the system glass effect (`UIGlassEffect`) rather than a custom blur, untinted or tinted with `Still.tint` at most.
 - On iOS 18 and earlier the same file draws opaque bars in `Still.background` with no hairline, so the apps look like the same family on older phones.
 
@@ -71,7 +72,7 @@ Navigation bars, toolbars and tab bars float above content as glass, and Apple's
 - Corners: `view.stillCorners(StillRadius.xl)` (continuous). Buttons: capsules.
 - Type: `StillFont.rounded(.title2)`, `StillFont.numeral()`. Set `adjustsFontForContentSizeCategory = true`.
 - Motion: `StillMotion.animate { … }` (bounce 0; crossfade under Reduce Motion).
-- Haptics: `StillHaptics.touch()` on contact, `StillHaptics.tick()` on detents.
+- Haptics: `StillHaptics.touch()` on contact, `StillHaptics.snap()` as a dragged piece snaps into place, `StillHaptics.tick()` on control detents. Call `StillHaptics.prepare()` when a drag begins so the first snap is on time.
 - Depth: a piece being dragged gets the `shadow-lift` look (Night at 16% opacity, 24pt blur, 8pt down in light; black at 36% in dark). Nothing at rest casts a shadow.
 - Accessibility: every piece gets an `accessibilityLabel`; draggable pieces get `.adjustable` with increment and decrement.
 

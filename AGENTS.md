@@ -1,6 +1,6 @@
 # StillKit: instructions for agents
 
-StillKit is the shared visual identity for the Still series: small, calm, free iOS apps and toys with no ads, no tracking and no accounts. It is a thin layer over UIKit. Apple's controls, layouts and behaviours stay; StillKit supplies colour roles, fonts, one-time appearance setup, button presets, list styling, motion, haptics and the promise sheet.
+StillKit is the shared visual identity for the Still series: small, calm, free iOS apps and toys with no ads, no tracking and no accounts. It is a thin layer over UIKit. Apple's controls, layouts and behaviours stay; StillKit supplies colour roles, fonts, one-time appearance setup, button presets, list styling, motion and haptics.
 
 Two jobs come here. Most often you will be **adopting StillKit in an existing app** (the playbook below). Sometimes you will be **changing StillKit itself** (last section).
 
@@ -18,8 +18,9 @@ These are what every app must end up following. Copy them into the app's `CLAUDE
 - **Buttons:** `.stillPrimary`, `.stillSecondary`, `.stillPlain`. Capsules. One primary per screen.
 - **Shape:** `stillCorners(_:)` with `StillRadius` values (continuous corners). No borders or shadows to separate surfaces; use the step between `groupedBackground` and `groupedSurface`.
 - **Motion:** `StillMotion.animate`. No bounce, no flashing.
-- **Haptics:** `StillHaptics.touch()` and `.tick()`. Never heavy or rigid.
+- **Haptics:** `StillHaptics.touch()` for contact, `.snap()` for a dragged piece finding its place, `.tick()` for control detents. Never heavy or rigid.
 - **iOS 26:** no custom backgrounds or tints on navigation bars, tab bars or toolbars. Liquid Glass picks up the ground.
+- **Actions:** a screen's actions go in the system navigation bar or toolbar, not custom floating buttons. Use a word, not a symbol, when the symbol would mislead.
 - **Leave alone:** alerts, action sheets, menus, share sheet, keyboards, system sheet chrome, and Apple's red for destructive actions.
 - **Follow the system appearance.** Never set `overrideUserInterfaceStyle`.
 
@@ -96,14 +97,13 @@ SwiftUI views inside the app: wrap roles as `Color(uiColor: Still.tint)`.
 1. `layer.cornerRadius` → `stillCorners(_:)` with the nearest `StillRadius` value; capsules for anything button-like.
 2. Remove borders and shadows used to separate surfaces. Keep `shadow-lift` only on things being dragged (see `docs/uikit.md`).
 3. `UIView.animate(withDuration:)` used for UI transitions → `StillMotion.animate`. Leave game physics and frame-driven animation alone; list them.
-4. Haptics → `StillHaptics.touch()` for contact, `.tick()` for detents. Remove `.heavy`, `.rigid` and repeated notification haptics.
+4. Haptics → `StillHaptics.touch()` for contact, `.snap()` for a dragged piece snapping into place, `.tick()` for control detents. Call `StillHaptics.prepare()` when a drag begins. Remove `.heavy`, `.rigid` and repeated notification haptics.
 5. Build. Stop.
 
 ### Pass 6: series signatures
 
-1. Add an "About Still" row at the bottom of settings (or an info button on a toy with no settings) that calls `StillPromise.present(from:moreFromStillURL:)`. Ask the person for the App Store developer URL.
-2. Check the app icon follows the template in `docs/brand.md` (Night ground, one Mist glyph, at most one Sage or Moss accent). Report; do not draw icons.
-3. Build. Stop.
+1. Check the app icon follows the template in `docs/brand.md` (Night ground, one Mist glyph, at most one Sage or Moss accent). Report; do not draw icons.
+2. Build. Stop.
 
 ### Done when
 
@@ -112,7 +112,6 @@ SwiftUI views inside the app: wrap roles as `Color(uiColor: Still.tint)`.
 - [ ] Largest accessibility text size: nothing truncated or overlapping.
 - [ ] Reduce Motion on: no movement beyond crossfades; ambient loops stopped.
 - [ ] VoiceOver: every game piece and custom control has a label.
-- [ ] The promise sheet is one tap from settings.
 - [ ] No `overrideUserInterfaceStyle`, no bar backgrounds on iOS 26.
 
 Report the checklist with each item ticked or explained.
@@ -125,4 +124,4 @@ Report the checklist with each item ticked or explained.
 - A change to a colour value must keep the contrast pairs in `docs/brand.md` at 4.5:1 for text (3:1 for `labelTertiary`, large text and non-text marks) in both modes. Check and state the ratios.
 - Update `docs/` in the same commit as the code.
 - Build for an iOS Simulator destination (`xcodebuild -scheme StillKit -destination 'generic/platform=iOS Simulator' build`). `swift build` on macOS will fail because the target imports UIKit.
-- Suggest the version bump (patch for fixes, minor for additions, major for breaking changes); the person tags releases.
+- Suggest the version bump (patch for fixes, minor for additions, major for breaking changes; before 1.0, breaking changes bump the minor). Once the person agrees, write it to `VERSION`. A push to main that changes `VERSION` builds, tags and releases it (`.github/workflows/release.yml`). Never create tags or releases by hand.

@@ -2,7 +2,7 @@
 
 The shared look and feel for the Still series: small, calm, free iOS apps and toys. No ads, no tracking, no accounts. Ever.
 
-StillKit is a thin layer over UIKit: colour roles from one muted palette, SF Pro Rounded for display text, capsule buttons, continuous corners, a calm spring, soft haptics, and the promise sheet every app shares.
+StillKit is a thin layer over UIKit: colour roles from one muted palette, SF Pro Rounded for display text, capsule buttons, continuous corners, a calm spring and soft haptics.
 
 ## Add it to an app
 
@@ -27,8 +27,12 @@ Point the agent at `AGENTS.md` and ask it to start with pass 0. It works in pass
 
 ## Docs
 
-- `docs/brand.md`: the rules (colour roles, type, shape, motion, voice, the promise).
+- `docs/brand.md`: the rules (colour roles, type, shape, motion, voice).
 - `docs/uikit.md`: how StillKit layers over UIKit, and what it leaves alone.
+
+## Releasing
+
+Put the new version in `VERSION` (for example `0.1.0`) in the same commit as the changes it ships, and push to main. The release workflow builds the package, then creates the tag and a GitHub release. Tags have no `v` prefix.
 
 ## Requirements
 

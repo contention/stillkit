@@ -1,0 +1,35 @@
+# StillKit
+
+The shared look and feel for the Still series: small, calm, free iOS apps and toys. No ads, no tracking, no accounts. Ever.
+
+StillKit is a thin layer over UIKit: colour roles from one muted palette, SF Pro Rounded for display text, capsule buttons, continuous corners, a calm spring, soft haptics, and the promise sheet every app shares.
+
+## Add it to an app
+
+1. In Xcode: **File → Add Package Dependencies…**
+2. Paste `https://github.com/contention/StillKit`, choose **Up to Next Major Version**, and add the **StillKit** library to the app target.
+3. In the scene delegate:
+
+```swift
+import StillKit
+
+let window = UIWindow(windowScene: windowScene)
+StillAppearance.apply(to: window)
+```
+
+4. Set the asset catalog's AccentColor to #4B6E68 (Any) and #99B59D (Dark).
+
+Then use roles everywhere: `view.backgroundColor = Still.background`, `label.font = StillFont.rounded(.title2)`, `UIButton(configuration: .stillPrimary("Begin"))`.
+
+## Adopting it in an existing app with an agent
+
+Point the agent at `AGENTS.md` and ask it to start with pass 0. It works in passes and stops for review after each.
+
+## Docs
+
+- `docs/brand.md`: the rules (colour roles, type, shape, motion, voice, the promise).
+- `docs/uikit.md`: how StillKit layers over UIKit, and what it leaves alone.
+
+## Requirements
+
+iOS 17+. Liquid Glass aware on iOS 26.

@@ -8,6 +8,10 @@ name: Release
 #
 # A version that is already tagged is skipped, so reverting VERSION never re-releases.
 # A version lower than the latest tag fails the run.
+#
+# Release notes come from GitHub's generator, which depends on the pull request service.
+# If that is down, the notes fall back to the commit list, so a release never waits on notes.
+# Creating the release is retried, since the releases API can fail during GitHub outages.
 
 on:
   push:
@@ -56,6 +60,7 @@ jobs:
 
           echo "Releasing $version (latest tag: ${latest:-none})"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "previous=$latest" >> "$GITHUB_OUTPUT"
           echo "release=true" >> "$GITHUB_OUTPUT"
 
       - name: Build
@@ -67,4 +72,33 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
-        run: gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --generate-notes
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          fields=(-f tag_name="$VERSION" -f target_commitish="$GITHUB_SHA")
+          range="$GITHUB_SHA"
+          if [[ -n "$PREVIOUS" ]]; then
+            fields+=(-f previous_tag_name="$PREVIOUS")
+            range="$PREVIOUS..$GITHUB_SHA"
+          fi
+
+          if ! notes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${fields[@]}" --jq .body) \
+              || [[ -z "$notes" ]]; then
+            echo "::warning::GitHub could not generate release notes; using the commit list instead."
+            notes="## Changes"$'\n\n'"$(git log --no-merges --pretty='- %s' "$range")"
+          fi
+
+          for attempt in 1 2 3 4 5; do
+            if gh release view "$VERSION" >/dev/null 2>&1; then
+              echo "Released $VERSION."
+              exit 0
+            fi
+            if gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes "$notes"; then
+              echo "Released $VERSION."
+              exit 0
+            fi
+            echo "::warning::Creating the release failed (attempt $attempt of 5); retrying in 30 seconds."
+            sleep 30
+          done
+
+          echo "::error::Could not create the release. Re-run this workflow once GitHub is healthy."
+          exit 1

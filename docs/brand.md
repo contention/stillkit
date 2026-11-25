@@ -85,9 +85,13 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 
 - SF Symbols only in UI, at the weight of the text beside them, rendering mode `.hierarchical`, coloured by `tint` or `label-secondary`. No multicolour symbols.
 - Use a word instead of a symbol when the symbol would mislead. `plus` means making something you keep, so it is wrong for a new round of a game; circular arrows read as undo. A new round is "New game", in words.
-- Actions live in the system navigation bar or toolbar, drawn as the system draws them, not in custom floating buttons.
+- Actions live in the system navigation bar or toolbar, drawn as the system draws them, not in custom floating buttons. A full-screen game or toy, which has no bars, puts them in the series menu instead (below).
 - App icons share one template: `night` ground, a single simple glyph in `mist`, at most one accent in `sage` or `moss`. Provide the dark and tinted variants iOS asks for; the dark variant uses `night-900`.
 - No emoji in UI.
+
+## The menu
+
+Every full-screen game and toy in the series opens the same menu the same way: **a two-finger tap**. It is a sheet with the app's logo in the bar, a line or two about the app, the game modes (the current one ticked), the current mode's actions and how to play, and the version and credits at the foot. A three-finger tap does the current mode's own thing, if it has one (its settings, or undo). A quiet pebble teaches each tap until it has been used once. VoiceOver users get the same things as actions. `StillMenu`, `addStillTap(fingers:)` and `StillHintView` build it; see `docs/uikit.md`, step 6.
 
 ## Voice
 

@@ -1,6 +1,6 @@
 # StillKit: instructions for agents
 
-StillKit is the shared visual identity for the Still series: small, calm, free iOS apps and toys with no ads, no tracking and no accounts. It is a thin layer over UIKit. Apple's controls, layouts and behaviours stay; StillKit supplies colour roles, fonts, one-time appearance setup, button presets, list styling, motion and haptics.
+StillKit is the shared visual identity for the Still series: small, calm, free iOS apps and toys with no ads, no tracking and no accounts. It is a thin layer over UIKit. Apple's controls, layouts and behaviours stay; StillKit supplies colour roles, fonts, one-time appearance setup, button presets, list styling, motion, haptics, and the series menu for games and toys.
 
 Two jobs come here. Most often you will be **adopting StillKit in an existing app** (the playbook below). Sometimes you will be **changing StillKit itself** (last section).
 
@@ -20,7 +20,7 @@ These are what every app must end up following. Copy them into the app's `CLAUDE
 - **Motion:** `StillMotion.animate`. No bounce, no flashing.
 - **Haptics:** `StillHaptics.touch()` for contact, `.snap()` for a dragged piece finding its place, `.tick()` for control detents. Never heavy or rigid.
 - **iOS 26:** no custom backgrounds or tints on navigation bars, tab bars or toolbars. Liquid Glass picks up the ground.
-- **Actions:** a screen's actions go in the system navigation bar or toolbar, not custom floating buttons. Use a word, not a symbol, when the symbol would mislead.
+- **Actions:** a screen's actions go in the system navigation bar or toolbar, not custom floating buttons. A full-screen game or toy puts them in the series menu: `StillMenu`, opened by a two-finger tap (`addStillTap(fingers:)`), taught by `StillHintView`, and offered to VoiceOver as actions. Use a word, not a symbol, when the symbol would mislead.
 - **Leave alone:** alerts, action sheets, menus, share sheet, keyboards, system sheet chrome, and Apple's red for destructive actions.
 - **Follow the system appearance.** Never set `overrideUserInterfaceStyle`.
 

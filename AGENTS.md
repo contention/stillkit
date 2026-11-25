@@ -32,7 +32,7 @@ Work in passes. **After each pass: build, summarise the diff, list anything you 
 ### Pass 0: set up
 
 1. Check the app's deployment target is iOS 17 or later. If not, stop and ask.
-2. Confirm the StillKit package is added to the app target (File → Add Package Dependencies, `https://github.com/contention/StillKit`, Up to Next Major). If it is not, ask the person to add it; do not edit the `.xcodeproj` by hand.
+2. Confirm the StillKit package is added to the app target (File → Add Package Dependencies, `https://github.com/contention/StillKit`, Up to Next Major). If it is not, add it yourself: either ask the person to do it in Xcode, or edit the `.xcodeproj` directly (an `XCRemoteSwiftPackageReference` with `upToNextMajorVersion`, an `XCSwiftPackageProductDependency` for `StillKit`, and the product in the app target's `packageProductDependencies` and Frameworks build phase), then resolve packages and build to confirm.
 3. Copy `templates/app-CLAUDE.md` from this package into the app's `CLAUDE.md` (append if one exists).
 4. Build. Stop.
 

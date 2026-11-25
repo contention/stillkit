@@ -8,6 +8,7 @@ explain why. Read them before changing any UI.
 - Colours: `Still.*` roles only. No hex, no UIColor literals, no .white/.black, no UIKit system colours. Never `StillPalette` in a view.
 - Type: `StillFont.rounded` for display text and numbers, `preferredFont(forTextStyle:)` for everything else. Dynamic Type always.
 - Buttons: `.stillPrimary` / `.stillSecondary` / `.stillPlain`. Capsules. One primary per screen.
-- Corners: `stillCorners(_:)` with `StillRadius`. Motion: `StillMotion`. Haptics: `StillHaptics`.
+- Corners: `stillCorners(_:)` with `StillRadius`. Motion: `StillMotion`. Haptics: `StillHaptics` (`touch` for contact, `snap` for a dragged piece finding its place, `tick` for control detents).
 - iOS 26: no custom navigation bar, tab bar or toolbar backgrounds or tints.
+- Actions: a screen's actions go in the system navigation bar or toolbar, not custom floating buttons. Words, not symbols, when a symbol would mislead (`plus` means making something to keep).
 - Never restyle alerts, menus, keyboards, system sheet chrome or destructive red. Never set `overrideUserInterfaceStyle`.

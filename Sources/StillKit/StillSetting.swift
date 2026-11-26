@@ -407,7 +407,7 @@ final class StillModeSettingsViewController: UIViewController, UICollectionViewD
             let isOn = self.store.bool(for: setting, modeID: self.modeID)
             rowView.configure(title: setting.title, isOn: isOn) { [weak self] newValue in
                 guard let self else { return }
-                StillHaptics.touch(0.5)
+                StillHaptics.touch()
                 self.store.setBool(newValue, key: setting.key, modeID: self.modeID)
                 self.onChange(setting.key)
             }

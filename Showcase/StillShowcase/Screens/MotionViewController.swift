@@ -106,7 +106,7 @@ final class MotionViewController: UIViewController {
 
     private func triggerMotion() {
         movedRight.toggle()
-        StillHaptics.touch(0.5)
+        StillHaptics.touch()
         StillMotion.animate {
             self.positionPebbles()
         }

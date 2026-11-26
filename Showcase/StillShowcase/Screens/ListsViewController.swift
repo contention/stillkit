@@ -72,7 +72,7 @@ final class ListsViewController: UIViewController, UICollectionViewDataSource, U
             toggle.isOn = self.switchOn
             toggle.addAction(UIAction { [weak self, weak toggle] _ in
                 guard let self, let toggle else { return }
-                StillHaptics.touch(0.5)
+                StillHaptics.touch()
                 self.switchOn = toggle.isOn
             }, for: .valueChanged)
             cell.accessories = [.customView(configuration: .init(customView: toggle, placement: .trailing(),

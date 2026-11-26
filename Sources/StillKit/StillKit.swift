@@ -291,7 +291,7 @@ public enum StillHaptics {
     }
 
     /// Contact: a piece lands, a toggle settles.
-    @MainActor public static func touch(_ intensity: CGFloat = 0.6) {
+    @MainActor public static func touch(_ intensity: CGFloat = 0.85) {
         soft.impactOccurred(intensity: intensity)
         soft.prepare()
     }

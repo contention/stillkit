@@ -69,7 +69,7 @@ final class ButtonsViewController: UIViewController {
         button.isEnabled = enabled
         if let name {
             button.addAction(UIAction { [weak self] _ in
-                StillHaptics.touch(0.55)
+                StillHaptics.touch()
                 self?.statusLabel.text = "\(name) tapped."
             }, for: .primaryActionTriggered)
         }

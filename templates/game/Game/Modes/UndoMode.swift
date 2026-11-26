@@ -109,7 +109,7 @@ private final class TraceCanvasView: UIView {
         insertSubview(stone, belowSubview: activePebble)
         stones.append(stone)
 
-        StillHaptics.touch(0.55)
+        StillHaptics.touch()
         StillMotion.animate {
             stone.alpha = 1
             self.activePebble.center = point
@@ -133,7 +133,7 @@ private final class TraceCanvasView: UIView {
         stones.removeAll()
         history.removeAll()
         let home = defaultPoint()
-        StillHaptics.touch(0.5)
+        StillHaptics.touch()
         StillMotion.animate({
             self.activePebble.center = home
             toRemove.forEach { $0.alpha = 0 }

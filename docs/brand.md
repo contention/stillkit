@@ -78,7 +78,7 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 
 ## Haptics and sound
 
-- Haptics: `UIImpactFeedbackGenerator(style: .soft)` at intensity 0.5 to 0.8 for contact (`touch`); `.light` at about 0.7 for a dragged piece snapping into place (`snap`); `UISelectionFeedbackGenerator` for detents in controls (`tick`). The selection haptic is too faint to feel under a moving finger, so never use it for a snap. Never `.heavy` or `.rigid`. `.success` notification feedback at most once per session, for finishing something.
+- Haptics: `UIImpactFeedbackGenerator(style: .soft)` at intensity 0.7 to 0.9 (default 0.85) for contact (`touch`); `.light` at about 0.7 for a dragged piece snapping into place (`snap`); `UISelectionFeedbackGenerator` for detents in controls (`tick`). The selection haptic is too faint to feel under a moving finger, so never use it for a snap. Never `.heavy` or `.rigid`. `.success` notification feedback at most once per session, for finishing something.
 - Sound: off by default. When on, use `AVAudioSession` category `.ambient`, so the Ring/Silent switch mutes it and the person's music keeps playing.
 
 ## Iconography

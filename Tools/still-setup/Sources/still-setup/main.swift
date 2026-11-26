@@ -180,11 +180,11 @@ func runSetup(_ options: SetupOptions) throws {
     try configureLaunchScreenAndSceneDelegate(
         target: target,
         pbxproj: pbxproj,
-        appGroup: appGroup,
+        project: project,
         usesSynchronizedFolder: usesSynchronizedFolder,
         appSourceDir: appSourceDir,
         projectDir: projectDir,
-        templateInfoPlist: templateGameDir + "Info.plist"
+        templateConfigDir: templateGameDir + "Config"
     )
 
     // Ensure AccentColor and LaunchBackground asset catalog settings exist.
@@ -421,8 +421,13 @@ func copyTemplateFiles(
         print("Wrote \(entry.dest.lastComponent)")
     }
 
-    // SceneDelegate.swift: write if missing or untouched Xcode template.
-    let sceneDest = appSourceDir + "SceneDelegate.swift"
+    // SceneDelegate.swift & AppDelegate.swift under App/ (matching the canonical Still layout).
+    let appDir = appSourceDir + "App"
+    try fm.createDirectory(atPath: appDir.string, withIntermediateDirectories: true)
+
+    let rootScene = appSourceDir + "SceneDelegate.swift"
+    let nestedScene = appDir + "SceneDelegate.swift"
+    let sceneDest = rootScene.exists ? rootScene : nestedScene
     let shouldWriteScene: Bool
     if !sceneDest.exists {
         shouldWriteScene = true
@@ -431,19 +436,23 @@ func copyTemplateFiles(
         shouldWriteScene = existing.contains("Use this method to optionally configure and attach the UIWindow")
     }
     if shouldWriteScene {
-        let raw = try String(contentsOfFile: (templateGameDir + "SceneDelegate.swift").string, encoding: .utf8)
-        try substitute(raw).write(toFile: sceneDest.string, atomically: true, encoding: .utf8)
-        writtenSwiftFiles.append(sceneDest)
-        print("Wrote SceneDelegate.swift")
+        let raw = try String(contentsOfFile: (templateGameDir + "App" + "SceneDelegate.swift").string, encoding: .utf8)
+        let destination = nestedScene
+        if rootScene.exists && rootScene != destination {
+            try fm.removeItem(atPath: rootScene.string)
+        }
+        try substitute(raw).write(toFile: destination.string, atomically: true, encoding: .utf8)
+        writtenSwiftFiles.append(destination)
+        print("Wrote App/SceneDelegate.swift")
     }
 
     // AppDelegate.swift: write only if no @main entry point exists in appSourceDir.
-    let appDelegateDest = appSourceDir + "AppDelegate.swift"
+    let appDelegateDest = appDir + "AppDelegate.swift"
     if !appDelegateDest.exists && !directoryContainsMainAttribute(appSourceDir) {
-        let raw = try String(contentsOfFile: (templateGameDir + "AppDelegate.swift").string, encoding: .utf8)
+        let raw = try String(contentsOfFile: (templateGameDir + "App" + "AppDelegate.swift").string, encoding: .utf8)
         try raw.write(toFile: appDelegateDest.string, atomically: true, encoding: .utf8)
         writtenSwiftFiles.append(appDelegateDest)
-        print("Wrote AppDelegate.swift")
+        print("Wrote App/AppDelegate.swift")
     }
 
     // Assets.xcassets: AccentColor and LaunchBackground (Still.canvas).
@@ -590,21 +599,36 @@ func removeClassicFileReferences(named fileName: String, target: PBXNativeTarget
 func configureLaunchScreenAndSceneDelegate(
     target: PBXNativeTarget,
     pbxproj: PBXProj,
-    appGroup: PBXGroup?,
+    project: PBXProject,
     usesSynchronizedFolder: Bool,
     appSourceDir: Path,
     projectDir: Path,
-    templateInfoPlist: Path
+    templateConfigDir: Path
 ) throws {
+    let fm = FileManager.default
     let configs = target.buildConfigurationList?.buildConfigurations ?? []
+    let templateInfoPlist = templateConfigDir + "Info.plist"
+
+    // Ensure Config/ exists for Info.plist and xcconfig templates (outside any synced folder).
+    let configDir = projectDir + "Config"
+    try fm.createDirectory(atPath: configDir.string, withIntermediateDirectories: true)
+    for fileName in ["Base.xcconfig", "Local.xcconfig.example"] {
+        let src = templateConfigDir + fileName
+        let dst = configDir + fileName
+        if src.exists && !dst.exists {
+            try String(contentsOfFile: src.string, encoding: .utf8)
+                .write(toFile: dst.string, atomically: true, encoding: .utf8)
+        }
+    }
 
     // Strip storyboard build settings if present.
     for config in configs {
         config.buildSettings.removeValue(forKey: "INFOPLIST_KEY_UIMainStoryboardFile")
         config.buildSettings.removeValue(forKey: "INFOPLIST_KEY_UILaunchStoryboardName")
+        config.buildSettings.removeValue(forKey: "INFOPLIST_KEY_UIApplicationSceneManifest_Generation")
     }
 
-    // Locate Info.plist from build settings, or create/update one so UILaunchScreen uses LaunchBackground.
+    // Locate Info.plist from build settings, or write Config/Info.plist (always outside synced folders).
     let existingInfoPath: Path? = configs.compactMap { config -> Path? in
         guard let raw = config.buildSettings["INFOPLIST_FILE"] as? String, !raw.isEmpty else { return nil }
         return projectDir + raw
@@ -614,10 +638,7 @@ func configureLaunchScreenAndSceneDelegate(
     if let existingInfoPath, existingInfoPath.exists {
         targetInfoPlist = existingInfoPath
     } else {
-        // In Xcode 16+ synchronized-folder projects, placing Info.plist inside the synced
-        // folder causes Xcode to both copy it as a resource and process it as INFOPLIST_FILE.
-        // Placing it at the project root (outside the synced folder) avoids the collision.
-        targetInfoPlist = usesSynchronizedFolder ? (projectDir + "Info.plist") : (appSourceDir + "Info.plist")
+        targetInfoPlist = configDir + "Info.plist"
         let rel = relativePath(from: projectDir, to: targetInfoPlist)
         for config in configs {
             config.buildSettings["INFOPLIST_FILE"] = rel
@@ -626,12 +647,18 @@ func configureLaunchScreenAndSceneDelegate(
         if !targetInfoPlist.exists {
             let templateContent = try String(contentsOfFile: templateInfoPlist.string, encoding: .utf8)
             try templateContent.write(toFile: targetInfoPlist.string, atomically: true, encoding: .utf8)
-            if !usesSynchronizedFolder, let appGroup {
+            if let mainGroup = project.mainGroup {
+                let configGroup = mainGroup.children.compactMap({ $0 as? PBXGroup }).first(where: { $0.path == "Config" || $0.name == "Config" }) ?? {
+                    let g = PBXGroup(children: [], sourceTree: .group, name: "Config", path: "Config")
+                    pbxproj.add(object: g)
+                    mainGroup.children.append(g)
+                    return g
+                }()
                 let ref = PBXFileReference(sourceTree: .group, lastKnownFileType: "text.plist.xml", path: "Info.plist")
                 pbxproj.add(object: ref)
-                appGroup.children.append(ref)
+                configGroup.children.append(ref)
             }
-            print("Wrote Info.plist with LaunchBackground launch screen")
+            print("Wrote Config/Info.plist with LaunchBackground launch screen")
             return
         }
     }

@@ -102,6 +102,9 @@ EOF
 
 test ! -f "$CLASSIC_DIR/FreshClassic/ViewController.swift"
 test ! -f "$CLASSIC_DIR/FreshClassic/Main.storyboard"
+test -f "$CLASSIC_DIR/Config/Info.plist"
+test -f "$CLASSIC_DIR/Config/Base.xcconfig"
+test -f "$CLASSIC_DIR/FreshClassic/App/SceneDelegate.swift"
 test -f "$CLASSIC_DIR/FreshClassic/Game/FreshClassicGame.swift"
 test -f "$CLASSIC_DIR/FreshClassic/Assets.xcassets/AccentColor.colorset/Contents.json"
 test -f "$CLASSIC_DIR/FreshClassic/Assets.xcassets/LaunchBackground.colorset/Contents.json"

@@ -21,7 +21,7 @@ These are what every app must end up following. Copy them into the app's `CLAUDE
 - **Haptics:** `StillHaptics.touch()` for contact, `.snap()` for a dragged piece finding its place, `.tick()` for control detents. Never heavy or rigid.
 - **iOS 26:** no custom backgrounds or tints on navigation bars, tab bars or toolbars. Liquid Glass picks up the ground.
 - **Actions:** a screen's actions go in the system navigation bar or toolbar, not custom floating buttons. Use a word, not a symbol, when the symbol would mislead.
-- **Game modes show the game and nothing else.** Each mode of a full-screen game or toy has no buttons, bars, labels, settings controls or floating glass: only its game elements. Everything else is in the series menu, `StillMenu`, opened by a two-finger tap (`addStillTap(fingers: 2)`). Modes are switched by choosing their row; a mode's settings open from the settings button on its row (`.choice(…, settings:)`). Undo is a device shake (`addStillUndo(action:)`), never a button. When a game begins, `StillHintView.playGameHint(canUndo:)` teaches the tap, and the shake if the mode supports undo. VoiceOver gets the same things as custom actions and the magic tap.
+- **Game modes show the game and nothing else.** Each mode of a full-screen game or toy has no buttons, bars, labels, settings controls or floating glass: only its game elements. Everything else is in the series menu, `StillMenu`, opened by a two-finger tap (`addStillTap(fingers: 2)`). Modes are switched by choosing their row; a mode's settings open from the settings button on its row (`.choice(…, settings:)`). Undo is a device shake (`addStillUndo(action:)`), never a button. Both the selected game mode and each mode's settings persist between app launches: saved in `UserDefaults` on the device as they change, restored when the app opens again, never synced or sent anywhere. When a game begins, `StillHintView.playGameHint(canUndo:)` teaches the tap, and the shake if the mode supports undo. VoiceOver gets the same things as custom actions and the magic tap.
 - **Leave alone:** alerts, action sheets, menus, share sheet, keyboards, system sheet chrome, and Apple's red for destructive actions.
 - **Follow the system appearance.** Never set `overrideUserInterfaceStyle`.
 
@@ -104,7 +104,7 @@ SwiftUI views inside the app: wrap roles as `Color(uiColor: Still.tint)`.
 ### Pass 6: series signatures
 
 1. Check the app icon follows the template in `docs/brand.md` (Night ground, one Mist glyph, at most one Sage or Moss accent). Report; do not draw icons.
-2. Games and toys: list every mode, and everything each mode shows besides its game elements (buttons, bars, toolbars, labels, settings controls, floating glass, existing menus or gestures for them). For each, propose where it goes: mode switching and the mode's actions into `StillMenu`, its settings behind `.choice(…, settings:)`, undo onto `addStillUndo(action:)`. **Wait for approval**, since this changes layout and behaviour. Then apply it, add the two-finger tap, call `StillHintView.playGameHint(canUndo:)` when a game begins, and add the VoiceOver custom actions and magic tap (`docs/uikit.md`, step 6).
+2. Games and toys: list every mode, and everything each mode shows besides its game elements (buttons, bars, toolbars, labels, settings controls, floating glass, existing menus or gestures for them). For each, propose where it goes: mode switching and the mode's actions into `StillMenu`, its settings behind `.choice(…, settings:)`, undo onto `addStillUndo(action:)`. **Wait for approval**, since this changes layout and behaviour. Then apply it, add the two-finger tap, persist both the selected game mode and each mode's settings in `UserDefaults` (report what the app saves today and where, and ask before changing any existing storage), call `StillHintView.playGameHint(canUndo:)` when a game begins, and add the VoiceOver custom actions and magic tap (`docs/uikit.md`, step 6).
 3. Build. Stop.
 
 ### Done when
@@ -114,7 +114,7 @@ SwiftUI views inside the app: wrap roles as `Color(uiColor: Still.tint)`.
 - [ ] Largest accessibility text size: nothing truncated or overlapping.
 - [ ] Reduce Motion on: no movement beyond crossfades; ambient loops stopped.
 - [ ] VoiceOver: every game piece and custom control has a label; the game's view offers "Open menu" (and "Undo" where the mode supports it) and opens the menu on the magic tap.
-- [ ] Every game mode shows only its game elements; the two-finger tap opens the menu, shake undoes where supported (and the menu offers "Undo" when Shake to Undo is off), and the hint plays when a game begins.
+- [ ] Every game mode shows only its game elements; the two-finger tap opens the menu, shake undoes where supported (and the menu offers "Undo" when Shake to Undo is off), the hint plays when a game begins, and after quitting and relaunching, the app opens in the game mode that was selected, and every mode's settings are as they were left.
 - [ ] No `overrideUserInterfaceStyle`, no bar backgrounds on iOS 26.
 
 Report the checklist with each item ticked or explained.

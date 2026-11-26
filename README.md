@@ -2,7 +2,7 @@
 
 The shared look and feel for the Still series: small, calm, free iOS apps and toys. No ads, no tracking, no accounts. Ever.
 
-StillKit is a thin layer over UIKit: colour roles from one muted palette, SF Pro Rounded for display text, capsule buttons, continuous corners, a calm spring and soft haptics. Games and toys show nothing but the game, and get the series menu: opened by a two-finger tap, with the game modes (and each mode's settings), the current mode's actions and the app's credits. Undo is a shake of the device, and a quiet hint teaches both when a game begins (`StillMenu`, `addStillTap(fingers:)`, `addStillUndo(action:)`, `StillHintView`).
+StillKit is a thin layer over UIKit: colour roles from one muted palette, SF Pro Rounded for display text, capsule buttons, continuous corners, a calm spring and soft haptics. Games and toys show nothing but the game, and get the series menu: opened by a two-finger tap, with the game modes (the current mode's actions on its row, and each mode's settings) and the app's credits. Undo is a shake of the device, and a quiet hint teaches both when a game begins (`StillMenu`, `addStillTap(fingers:)`, `addStillUndo(action:)`, `StillHintView`).
 
 ## Add it to an app
 

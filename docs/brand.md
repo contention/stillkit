@@ -93,13 +93,13 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 
 **A game shows the game and nothing else.** Every mode of a full-screen game or toy (each version of the game) shows only its game elements: no buttons, bars, labels, settings controls or floating glass. The quiet hint pebble is the one exception, and only for a moment.
 
-Everything else lives in one menu, opened the same way in every app: **a two-finger tap**. It is a sheet with the app's logo in the bar, a line or two about the app, the game modes (the current one ticked, and a settings button on each mode that has its own settings), the current mode's actions and how to play, and the version and credits at the foot. Choosing a mode switches to it.
+Everything else lives in one menu, opened the same way in every app: **a two-finger tap**. It is a sheet with the app's logo in the bar, a line or two about the app, the game modes (the current one ticked, with its actions as buttons on its row, and a settings button on each mode that has its own settings), how to play, and the version and credits at the foot. Choosing a mode switches to it.
 
-- **Undo is a shake.** A mode that can take a move back undoes on a shake of the device, never with a button. If the person has turned Shake to Undo off, the menu offers "Undo" instead.
+- **Undo is a shake.** A mode that can take a move back undoes on a shake of the device, never with a button. If the person has turned Shake to Undo off, the current mode's row offers an undo button instead.
 - **A mode's settings are in the menu**, behind the settings button on its row. They apply as they change; there is no Save.
 - **Nothing is forgotten.** Both the selected game mode and each mode's settings are kept between launches, so the app opens in the mode the person chose, with every mode set up as they left it. They are kept on the device only: never synced, never sent anywhere.
 - **The hint teaches the gestures.** A few seconds after a game begins, a quiet pebble fades in, says "A two-finger tap opens the menu.", adds "Shake your device to undo." when the mode supports undo, and fades away.
-- **VoiceOver users get the same things as actions**: open menu, undo, and each mode's settings.
+- **VoiceOver users get the same things as actions**: open menu, undo, each mode's row buttons and its settings.
 
 `StillMenu`, `addStillTap(fingers:)`, `addStillUndo(action:)` and `StillHintView` build it; see `docs/uikit.md`, step 6.
 

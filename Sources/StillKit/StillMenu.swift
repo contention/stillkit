@@ -306,8 +306,10 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                     run: { action, source in self?.run(action.handler, confirmation: action.confirmation, from: source) },
                     showsSettingsColumn: settingsSections.contains(indexPath.section),
                     openSettings: open, traits: cell.traitCollection)
+                // The accessory's own width: a standard width would let row actions run over the text.
                 cell.accessories = [.customView(configuration: .init(
-                    customView: accessory, placement: .trailing(displayed: .always), maintainsFixedSize: true))]
+                    customView: accessory, placement: .trailing(displayed: .always),
+                    reservedLayoutWidth: .actual, maintainsFixedSize: true))]
                 // VoiceOver reads the row as one element, so its buttons are offered as actions.
                 var custom = zip(actions, accessory.actionButtons).map { action, button in
                     UIAccessibilityCustomAction(name: action.title) { _ in

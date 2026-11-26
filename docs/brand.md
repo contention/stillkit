@@ -73,7 +73,7 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 
 - Springs with no visible overshoot: `UIView.animate(springDuration: 0.5, bounce: 0)` (iOS 17+), or damping 0.9 and up. Nothing bounces for attention.
 - Durations 0.35 to 0.6s for UI; ambient loops (breathing, drifting) slower than 4 seconds per cycle.
-- No flashing, no strobing, no shake-to-alert, no confetti.
+- No flashing, no strobing, no shaking the screen to alert, no confetti. (Shaking the device to undo is a gesture, not motion on screen.)
 - With Reduce Motion on, replace movement with a 0.3s crossfade and stop ambient loops.
 
 ## Haptics and sound
@@ -85,13 +85,22 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 
 - SF Symbols only in UI, at the weight of the text beside them, rendering mode `.hierarchical`, coloured by `tint` or `label-secondary`. No multicolour symbols.
 - Use a word instead of a symbol when the symbol would mislead. `plus` means making something you keep, so it is wrong for a new round of a game; circular arrows read as undo. A new round is "New game", in words.
-- Actions live in the system navigation bar or toolbar, drawn as the system draws them, not in custom floating buttons. A full-screen game or toy, which has no bars, puts them in the series menu instead (below).
+- Actions live in the system navigation bar or toolbar, drawn as the system draws them, not in custom floating buttons. A full-screen game or toy, which has no bars and shows nothing but the game, puts them in the series menu instead (below).
 - App icons share one template: `night` ground, a single simple glyph in `mist`, at most one accent in `sage` or `moss`. Provide the dark and tinted variants iOS asks for; the dark variant uses `night-900`.
 - No emoji in UI.
 
-## The menu
+## Game screens and the menu
 
-Every full-screen game and toy in the series opens the same menu the same way: **a two-finger tap**. It is a sheet with the app's logo in the bar, a line or two about the app, the game modes (the current one ticked), the current mode's actions and how to play, and the version and credits at the foot. A three-finger tap does the current mode's own thing, if it has one (its settings, or undo). A quiet pebble teaches each tap until it has been used once. VoiceOver users get the same things as actions. `StillMenu`, `addStillTap(fingers:)` and `StillHintView` build it; see `docs/uikit.md`, step 6.
+**A game shows the game and nothing else.** Every mode of a full-screen game or toy (each version of the game) shows only its game elements: no buttons, bars, labels, settings controls or floating glass. The quiet hint pebble is the one exception, and only for a moment.
+
+Everything else lives in one menu, opened the same way in every app: **a two-finger tap**. It is a sheet with the app's logo in the bar, a line or two about the app, the game modes (the current one ticked, and a settings button on each mode that has its own settings), the current mode's actions and how to play, and the version and credits at the foot. Choosing a mode switches to it.
+
+- **Undo is a shake.** A mode that can take a move back undoes on a shake of the device, never with a button. If the person has turned Shake to Undo off, the menu offers "Undo" instead.
+- **A mode's settings are in the menu**, behind the settings button on its row. They apply as they change; there is no Save.
+- **The hint teaches the gestures.** A few seconds after a game begins, a quiet pebble fades in, says "A two-finger tap opens the menu.", adds "Shake your device to undo." when the mode supports undo, and fades away.
+- **VoiceOver users get the same things as actions**: open menu, undo, and each mode's settings.
+
+`StillMenu`, `addStillTap(fingers:)`, `addStillUndo(action:)` and `StillHintView` build it; see `docs/uikit.md`, step 6.
 
 ## Voice
 

@@ -59,29 +59,33 @@ struct StillMenu {
 
         let title: String
         let kind: Kind
+        let beforeClose: (@MainActor () -> Void)?
         let handler: (@MainActor () -> Void)?
 
         static func choice(_ title: String, detail: String? = nil, isSelected: Bool,
                            actions: [RowAction] = [],
                            settings: (@MainActor () -> UIViewController)? = nil,
+                           beforeClose: (@MainActor () -> Void)? = nil,
                            action: @escaping @MainActor () -> Void) -> Item {
             Item(title: title,
                  kind: .choice(detail: detail, isSelected: isSelected, actions: actions, settings: settings),
+                 beforeClose: beforeClose,
                  handler: action)
         }
 
         static func action(_ title: String, role: Role = .normal, confirmation: Confirmation? = nil,
                            action: @escaping @MainActor () -> Void) -> Item {
-            Item(title: title, kind: .action(role: role, confirmation: confirmation), handler: action)
+            Item(title: title, kind: .action(role: role, confirmation: confirmation),
+                 beforeClose: nil, handler: action)
         }
 
         static func text(_ text: String) -> Item {
-            Item(title: text, kind: .text, handler: nil)
+            Item(title: text, kind: .text, beforeClose: nil, handler: nil)
         }
 
         /// A disabled placeholder row (for example "More Still apps" before it has a destination).
         static func disabled(_ title: String) -> Item {
-            Item(title: title, kind: .disabled, handler: nil)
+            Item(title: title, kind: .disabled, beforeClose: nil, handler: nil)
         }
     }
 
@@ -387,21 +391,24 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
 
         var confirmation: StillMenu.Confirmation?
         if case .action(_, let asked) = item.kind { confirmation = asked }
-        run(handler, confirmation: confirmation, from: collectionView.cellForItem(at: indexPath))
+        run(handler, beforeClose: item.beforeClose, confirmation: confirmation,
+            from: collectionView.cellForItem(at: indexPath))
     }
 
     /// Asks first when there is a confirmation, then closes the menu and acts.
-    private func run(_ handler: @escaping @MainActor () -> Void, confirmation: StillMenu.Confirmation?,
+    private func run(_ handler: @escaping @MainActor () -> Void,
+                     beforeClose: (@MainActor () -> Void)? = nil,
+                     confirmation: StillMenu.Confirmation?,
                      from source: UIView?) {
         guard let confirmation else {
-            close(then: handler)
+            close(before: beforeClose, then: handler)
             return
         }
         let alert = UIAlertController(title: confirmation.title, message: confirmation.message,
                                       preferredStyle: .actionSheet)
         let style: UIAlertAction.Style = confirmation.isDestructive ? .destructive : .default
         alert.addAction(UIAlertAction(title: confirmation.confirm, style: style) { [weak self] _ in
-            self?.close(then: handler)
+            self?.close(before: beforeClose, then: handler)
         })
         alert.addAction(UIAlertAction(title: confirmation.cancel, style: .cancel))
         // On iPad the action sheet points at the row or button it asks about.
@@ -413,7 +420,10 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
     }
 
     /// Closes the menu, then acts, so the action's effect is seen.
-    private func close(then handler: @escaping @MainActor () -> Void) {
+    /// `before` runs just as dismissal begins so mode switches are already in place behind the sheet.
+    private func close(before: (@MainActor () -> Void)? = nil,
+                       then handler: @escaping @MainActor () -> Void) {
+        before?()
         guard let presenter = presentingViewController else {
             handler()
             return

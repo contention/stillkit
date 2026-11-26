@@ -224,11 +224,23 @@ final class StillGameHostViewController: UIViewController {
         return created
     }
 
-    private func switchToMode(_ nextMode: any StillGameMode) {
-        guard currentMode?.modeID != nextMode.modeID else { return }
+    /// Swaps the active mode immediately behind the dismissing menu sheet so the previous
+    /// mode never flashes as the sheet slides away.
+    private func prepareModeSwitch(to nextMode: any StillGameMode) -> Bool {
+        guard currentMode?.modeID != nextMode.modeID else { return false }
         currentMode?.end()
         store.selectedModeID = nextMode.modeID
-        mountMode(nextMode, animated: true, startImmediately: true)
+        mountMode(nextMode, animated: false, startImmediately: false)
+        nextMode.begin()
+        return true
+    }
+
+    /// Runs once the menu sheet has finished dismissing after a mode switch.
+    private func completeModeSwitch(to nextMode: any StillGameMode) {
+        hintView.playGameHint(canUndo: nextMode.supportsUndo)
+        if let gameView = currentGameView {
+            UIAccessibility.post(notification: .screenChanged, argument: gameView)
+        }
     }
 
     private func mountMode(_ mode: any StillGameMode, animated: Bool, startImmediately: Bool) {
@@ -549,9 +561,15 @@ final class StillGameHostViewController: UIViewController {
             }
         }
 
+        var switched = false
         return StillMenu.Item.choice(mode.title, detail: mode.detail, isSelected: isSelected,
-                                     actions: rowActions, settings: settingsBuilder) { [weak self] in
-            self?.switchToMode(mode)
+                                     actions: rowActions, settings: settingsBuilder,
+                                     beforeClose: { [weak self] in
+            switched = self?.prepareModeSwitch(to: mode) ?? false
+        }) { [weak self] in
+            if switched {
+                self?.completeModeSwitch(to: mode)
+            }
         }
     }
 

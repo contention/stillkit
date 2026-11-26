@@ -2,10 +2,11 @@ import UIKit
 
 // MARK: - The menu
 //
-// A full-screen game or toy has no bars to hold its actions, so the series gives it one
-// menu, opened by a two-finger tap: the app's logo in the navigation bar, a line about the
-// app, an inset-grouped list (game modes, then the current mode's actions and how to play
-// it), and the version and credits at the foot. See docs/uikit.md, step 6.
+// A game or toy's screen shows the game and nothing else: no buttons, bars or labels. So
+// the series gives it one menu, opened by a two-finger tap: the app's logo in the navigation
+// bar, a line about the app, an inset-grouped list (game modes, each with its settings if it
+// has any, then the current mode's actions and how to play it), and the version and credits
+// at the foot. See docs/uikit.md, step 6.
 
 /// The series menu. Describe it, then call `present(from:)`.
 ///
@@ -16,7 +17,10 @@ import UIKit
 ///     about: "No points. No aims. Just a tiny space to bounce, breathe, and be.",
 ///     sections: [
 ///         .init("Game mode", items: modes.map { mode in
-///             .choice(mode.name, detail: mode.summary, isSelected: mode == current) { switchTo(mode) }
+///             .choice(mode.name, detail: mode.summary, isSelected: mode == current,
+///                     settings: mode.hasSettings ? { ModeSettingsViewController(mode) } : nil) {
+///                 switchTo(mode)
+///             }
 ///         })
 ///     ],
 ///     footer: [StillMenu.version(of: "minibalism"), "A contention product."]
@@ -64,7 +68,7 @@ public struct StillMenu {
     /// One row.
     public struct Item {
         enum Kind {
-            case choice(detail: String?, isSelected: Bool)
+            case choice(detail: String?, isSelected: Bool, settings: (@MainActor () -> UIViewController)?)
             case action(role: Role, confirmation: Confirmation?)
             case text
         }
@@ -75,9 +79,18 @@ public struct StillMenu {
 
         /// One of a set to choose between, such as a game mode: its name in rounded type,
         /// what it is beneath, and a checkmark when it is the current one.
+        ///
+        /// Give a mode with its own settings a `settings` closure. The row then shows a
+        /// settings button: tapping the row still chooses the mode, and tapping the button
+        /// pushes the closure's view controller onto the menu, titled with the mode's name
+        /// unless it has a title of its own. The mode is not switched. Build the settings
+        /// screen like any other list (`Still.groupedBackground`, `StillList`), and apply
+        /// changes as they are made: there is no Save.
         public static func choice(_ title: String, detail: String? = nil, isSelected: Bool,
+                                  settings: (@MainActor () -> UIViewController)? = nil,
                                   action: @escaping @MainActor () -> Void) -> Item {
-            Item(title: title, kind: .choice(detail: detail, isSelected: isSelected), handler: action)
+            Item(title: title, kind: .choice(detail: detail, isSelected: isSelected, settings: settings),
+                 handler: action)
         }
 
         /// Something to do, in tint text: "New game", "Clear the board". With a
@@ -128,11 +141,15 @@ public struct StillMenu {
     @discardableResult
     public func present(from presenter: UIViewController) -> Bool {
         guard presenter.presentedViewController == nil else { return false }
-        let navigation = UINavigationController(rootViewController: StillMenuViewController(menu: self))
+        let root = StillMenuViewController(menu: self)
+        let navigation = UINavigationController(rootViewController: root)
         if let sheet = navigation.sheetPresentationController {
             sheet.detents = [.large()]
             sheet.prefersGrabberVisible = true
         }
+        // Told when the sheet is swiped away, so the game knows the menu has gone.
+        navigation.presentationController?.delegate = root
+        NotificationCenter.default.post(name: .stillMenuWillOpen, object: nil)
         presenter.present(navigation, animated: true)
         return true
     }
@@ -149,7 +166,8 @@ public struct StillMenu {
 // MARK: - The menu's screen
 
 @MainActor
-final class StillMenuViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate {
+final class StillMenuViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate,
+    UIAdaptivePresentationControllerDelegate {
     private static let aboutKind = "StillMenu.about"
     private static let creditsKind = "StillMenu.credits"
 
@@ -211,9 +229,19 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
     }
 
     private func registerViews() {
-        cellRegistration = .init { cell, _, item in
+        // In a section where any choice has settings, every choice row keeps room for the
+        // checkmark and the settings button, so the checkmarks line up.
+        let settingsSections = Set(sections.indices.filter { index in
+            sections[index].items.contains { item in
+                if case .choice(_, _, .some) = item.kind { return true }
+                return false
+            }
+        })
+
+        cellRegistration = .init { [weak self] cell, indexPath, item in
+            cell.accessibilityCustomActions = nil
             switch item.kind {
-            case .choice(let detail, let isSelected):
+            case .choice(let detail, let isSelected, let settings):
                 var content = UIListContentConfiguration.subtitleCell()
                 content.text = item.title
                 content.secondaryText = detail
@@ -225,8 +253,28 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                 content.textProperties.adjustsFontForContentSizeCategory = true
                 content.secondaryTextProperties.adjustsFontForContentSizeCategory = true
                 cell.contentConfiguration = content
-                cell.accessories = isSelected ? [.checkmark()] : []
                 cell.accessibilityTraits = isSelected ? [.button, .selected] : [.button]
+
+                guard settingsSections.contains(indexPath.section) else {
+                    cell.accessories = isSelected ? [.checkmark()] : []
+                    break
+                }
+                var open: (@MainActor () -> Void)?
+                if let settings {
+                    open = { self?.showSettings(settings(), for: item.title) }
+                }
+                let accessory = StillMenuChoiceAccessory(isSelected: isSelected, title: item.title,
+                                                         openSettings: open, traits: cell.traitCollection)
+                cell.accessories = [.customView(configuration: .init(
+                    customView: accessory, placement: .trailing(displayed: .always), maintainsFixedSize: true))]
+                if let open {
+                    cell.accessibilityCustomActions = [
+                        UIAccessibilityCustomAction(name: "Settings") { _ in
+                            open()
+                            return true
+                        },
+                    ]
+                }
 
             case .action(let role, _):
                 var content = UIListContentConfiguration.cell()
@@ -340,8 +388,76 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
             handler()
             return
         }
-        presenter.dismiss(animated: true) { handler() }
+        presenter.dismiss(animated: true) {
+            NotificationCenter.default.post(name: .stillMenuDidClose, object: nil)
+            handler()
+        }
     }
+
+    /// Pushes a mode's settings onto the menu.
+    private func showSettings(_ settings: UIViewController, for title: String) {
+        if settings.title == nil && settings.navigationItem.title == nil {
+            settings.title = title
+        }
+        navigationController?.pushViewController(settings, animated: true)
+    }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        NotificationCenter.default.post(name: .stillMenuDidClose, object: nil)
+    }
+}
+
+/// The trailing end of a choice row in a section with settings: the checkmark (kept in place
+/// but invisible on rows that are not current, so checkmarks line up) and the settings
+/// button (likewise kept in place on modes without settings).
+final class StillMenuChoiceAccessory: UIView {
+    private static let buttonSide: CGFloat = 44
+
+    private let checkmark = UIImageView()
+    private let button = UIButton(configuration: .plain())
+
+    init(isSelected: Bool, title: String, openSettings: (@MainActor () -> Void)?, traits: UITraitCollection) {
+        super.init(frame: .zero)
+        let font = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traits)
+
+        checkmark.image = UIImage(systemName: "checkmark",
+                                  withConfiguration: UIImage.SymbolConfiguration(font: font)
+                                      .applying(UIImage.SymbolConfiguration(weight: .semibold)))
+        checkmark.contentMode = .center
+        checkmark.alpha = isSelected ? 1 : 0
+        checkmark.isAccessibilityElement = false
+        addSubview(checkmark)
+
+        var configuration = UIButton.Configuration.plain()
+        configuration.image = UIImage(systemName: "gearshape")
+        // Drawn in the inherited tint: it is something to tap.
+        configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(font: font)
+        configuration.contentInsets = .zero
+        button.configuration = configuration
+        button.accessibilityLabel = "\(title) settings"
+        if let openSettings {
+            button.addAction(UIAction { _ in openSettings() }, for: .primaryActionTriggered)
+        } else {
+            button.alpha = 0
+            button.isUserInteractionEnabled = false
+            button.isAccessibilityElement = false
+        }
+        addSubview(button)
+
+        let checkSize = checkmark.intrinsicContentSize
+        let height = max(Self.buttonSide, checkSize.height)
+        frame.size = CGSize(width: checkSize.width + StillSpace.s1 + Self.buttonSide, height: height)
+        checkmark.frame = CGRect(x: 0, y: (height - checkSize.height) / 2,
+                                 width: checkSize.width, height: checkSize.height)
+        // A full 44pt target; the gear sits at its centre.
+        button.frame = CGRect(x: frame.width - Self.buttonSide, y: (height - Self.buttonSide) / 2,
+                              width: Self.buttonSide, height: Self.buttonSide)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    override var intrinsicContentSize: CGSize { frame.size }
 }
 
 /// Centred text above or below the menu's list. A text view rather than a label, so links in
@@ -391,16 +507,16 @@ final class StillMenuTextView: UICollectionReusableView {
 
 // MARK: - Taps
 
-/// A tap with several fingers, for the series' gestures: two fingers open the menu, three
-/// do the current mode's own thing (its settings, or undo).
+/// A tap with several fingers. The series uses one: a two-finger tap opens the menu. A
+/// mode's settings live in the menu, and undo is a shake (`addStillUndo(action:)`).
 ///
 /// It recognises alongside the app's own gestures and never cancels their touches, so a drag
 /// or a flick under one finger carries on. A tap with more fingers than it asks for fails it,
 /// so a three-finger tap never counts as a two-finger one.
 ///
 /// VoiceOver keeps multi-finger taps for itself, so give VoiceOver the same things as
-/// accessibility custom actions ("Open menu"), and the magic tap (a two-finger double tap) for
-/// opening the menu.
+/// accessibility custom actions ("Open menu", and `StillShakeToUndo.accessibilityAction`), and
+/// the magic tap (a two-finger double tap) for opening the menu.
 @MainActor
 public final class StillTapGesture: UITapGestureRecognizer, UIGestureRecognizerDelegate {
     private let action: @MainActor () -> Void
@@ -435,18 +551,23 @@ public extension UIView {
 
 // MARK: - Hints
 
-/// The quiet pebble that teaches a gesture: "Two-finger tap for the menu". It fades in after
-/// a pause, shows each message in turn, and fades away. It never takes touches and VoiceOver
-/// skips it (VoiceOver users get the gestures as actions instead).
+/// The quiet pebble that teaches the series gestures. It fades in after a pause, shows its
+/// message, and fades away. It never takes touches and VoiceOver skips it (VoiceOver users
+/// get the gestures as actions instead). It is the one thing besides the game that a game
+/// screen may show, and only for a moment.
 ///
-/// Show hints until the gesture has been used once, then stop. Place the view where it covers
-/// nothing being played with, or use `pinned(to:)` for the bottom of a toy's screen.
+/// When a game begins (on launch, and after switching mode), call `playGameHint(canUndo:)`:
+/// "A two-finger tap opens the menu.", with "Shake your device to undo." added when the mode
+/// supports undo. Opening the menu stops it. Place the view where it covers nothing being
+/// played with, or use `pinned(to:)` for the bottom of the screen.
 @MainActor
 public final class StillHintView: UIView {
     /// How long after `play(_:)` the first message fades in.
     public static let delay: TimeInterval = 3
     /// How long each message stays.
     public static let duration: TimeInterval = 3
+    /// How long the game hint stays when it also teaches undo: two sentences take longer to read.
+    public static let longDuration: TimeInterval = 4.5
     /// The pause between messages.
     public static let gap: TimeInterval = 0.4
 
@@ -469,6 +590,10 @@ public final class StillHintView: UIView {
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         addSubview(label)
+
+        // The menu teaches itself once it is open.
+        NotificationCenter.default.addObserver(self, selector: #selector(menuWillOpen),
+                                               name: .stillMenuWillOpen, object: nil)
         NSLayoutConstraint.activate([
             label.topAnchor.constraint(equalTo: topAnchor, constant: StillSpace.s2),
             label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -StillSpace.s2),
@@ -486,9 +611,30 @@ public final class StillHintView: UIView {
         stillCorners(min(bounds.height / 2, StillRadius.lg))
     }
 
+    /// The line that teaches the series gestures when a game begins: "A two-finger tap opens
+    /// the menu.", plus "Shake your device to undo." when `canUndo` is true and the person
+    /// allows shake to undo.
+    public static func gameMessage(canUndo: Bool) -> String {
+        let menu = "A two-finger tap opens the menu."
+        guard canUndo, StillShakeToUndo.isAvailable else { return menu }
+        return menu + " Shake your device to undo."
+    }
+
+    /// Teaches the series gestures as a game begins: after a pause, `gameMessage(canUndo:)`
+    /// fades in, stays, and fades away. Call it on launch and after switching mode, with
+    /// whether the new mode supports undo. Replaces anything already playing.
+    public func playGameHint(canUndo: Bool) {
+        let teachesUndo = canUndo && StillShakeToUndo.isAvailable
+        play([Self.gameMessage(canUndo: canUndo)], holding: teachesUndo ? Self.longDuration : Self.duration)
+    }
+
     /// Shows each message in turn, after a pause. Replaces any sequence already playing.
     /// Does nothing while VoiceOver is running.
     public func play(_ messages: [String]) {
+        play(messages, holding: Self.duration)
+    }
+
+    private func play(_ messages: [String], holding: TimeInterval) {
         stop(animated: false)
         guard !messages.isEmpty, !UIAccessibility.isVoiceOverRunning else { return }
         sequence = Task { [weak self] in
@@ -498,7 +644,7 @@ public final class StillHintView: UIView {
                     guard let self else { return }
                     self.label.text = message
                     StillMotion.animate { self.alpha = 1 }
-                    try await Task.sleep(for: .seconds(Self.duration))
+                    try await Task.sleep(for: .seconds(holding))
                     StillMotion.animate { self.alpha = 0 }
                     try await Task.sleep(for: .seconds(Self.gap))
                 }
@@ -508,7 +654,13 @@ public final class StillHintView: UIView {
         }
     }
 
-    /// Ends the sequence: call when the gesture is used, or the screen changes.
+    @objc private func menuWillOpen() {
+        guard sequence != nil else { return }
+        stop()
+    }
+
+    /// Ends the sequence: call when the gesture is used, or the screen changes. Opening the
+    /// menu calls it for you.
     public func stop(animated: Bool = true) {
         sequence?.cancel()
         sequence = nil

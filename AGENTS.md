@@ -1,6 +1,6 @@
 # StillKit: instructions for agents
 
-StillKit is the shared visual identity for the Still series: small, calm, free iOS apps and toys with no ads, no tracking and no accounts. It is a thin layer over UIKit. Apple's controls, layouts and behaviours stay; StillKit supplies colour roles, fonts, one-time appearance setup, button presets, list styling, motion, haptics, and the series menu for games and toys.
+StillKit is the shared visual identity for the Still series: small, calm, free iOS apps and toys with no ads, no tracking and no accounts. It is a thin layer over UIKit. Apple's controls, layouts and behaviours stay; StillKit supplies colour roles, fonts, one-time appearance setup, button presets, list styling, motion, haptics, and for games and toys the series menu, shake to undo and the hint pebble.
 
 Two jobs come here. Most often you will be **adopting StillKit in an existing app** (the playbook below). Sometimes you will be **changing StillKit itself** (last section).
 
@@ -20,7 +20,8 @@ These are what every app must end up following. Copy them into the app's `CLAUDE
 - **Motion:** `StillMotion.animate`. No bounce, no flashing.
 - **Haptics:** `StillHaptics.touch()` for contact, `.snap()` for a dragged piece finding its place, `.tick()` for control detents. Never heavy or rigid.
 - **iOS 26:** no custom backgrounds or tints on navigation bars, tab bars or toolbars. Liquid Glass picks up the ground.
-- **Actions:** a screen's actions go in the system navigation bar or toolbar, not custom floating buttons. A full-screen game or toy puts them in the series menu: `StillMenu`, opened by a two-finger tap (`addStillTap(fingers:)`), taught by `StillHintView`, and offered to VoiceOver as actions. Use a word, not a symbol, when the symbol would mislead.
+- **Actions:** a screen's actions go in the system navigation bar or toolbar, not custom floating buttons. Use a word, not a symbol, when the symbol would mislead.
+- **Game modes show the game and nothing else.** Each mode of a full-screen game or toy has no buttons, bars, labels, settings controls or floating glass: only its game elements. Everything else is in the series menu, `StillMenu`, opened by a two-finger tap (`addStillTap(fingers: 2)`). Modes are switched by choosing their row; a mode's settings open from the settings button on its row (`.choice(…, settings:)`). Undo is a device shake (`addStillUndo(action:)`), never a button. When a game begins, `StillHintView.playGameHint(canUndo:)` teaches the tap, and the shake if the mode supports undo. VoiceOver gets the same things as custom actions and the magic tap.
 - **Leave alone:** alerts, action sheets, menus, share sheet, keyboards, system sheet chrome, and Apple's red for destructive actions.
 - **Follow the system appearance.** Never set `overrideUserInterfaceStyle`.
 
@@ -103,7 +104,8 @@ SwiftUI views inside the app: wrap roles as `Color(uiColor: Still.tint)`.
 ### Pass 6: series signatures
 
 1. Check the app icon follows the template in `docs/brand.md` (Night ground, one Mist glyph, at most one Sage or Moss accent). Report; do not draw icons.
-2. Build. Stop.
+2. Games and toys: list every mode, and everything each mode shows besides its game elements (buttons, bars, toolbars, labels, settings controls, floating glass, existing menus or gestures for them). For each, propose where it goes: mode switching and the mode's actions into `StillMenu`, its settings behind `.choice(…, settings:)`, undo onto `addStillUndo(action:)`. **Wait for approval**, since this changes layout and behaviour. Then apply it, add the two-finger tap, call `StillHintView.playGameHint(canUndo:)` when a game begins, and add the VoiceOver custom actions and magic tap (`docs/uikit.md`, step 6).
+3. Build. Stop.
 
 ### Done when
 
@@ -111,7 +113,8 @@ SwiftUI views inside the app: wrap roles as `Color(uiColor: Still.tint)`.
 - [ ] Every screen checked in light and dark mode.
 - [ ] Largest accessibility text size: nothing truncated or overlapping.
 - [ ] Reduce Motion on: no movement beyond crossfades; ambient loops stopped.
-- [ ] VoiceOver: every game piece and custom control has a label.
+- [ ] VoiceOver: every game piece and custom control has a label; the game's view offers "Open menu" (and "Undo" where the mode supports it) and opens the menu on the magic tap.
+- [ ] Every game mode shows only its game elements; the two-finger tap opens the menu, shake undoes where supported (and the menu offers "Undo" when Shake to Undo is off), and the hint plays when a game begins.
 - [ ] No `overrideUserInterfaceStyle`, no bar backgrounds on iOS 26.
 
 Report the checklist with each item ticked or explained.

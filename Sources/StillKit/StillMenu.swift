@@ -229,6 +229,8 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
     }
 
     private func registerViews() {
+        let sections = sections
+
         // In a section where any choice has settings, every choice row keeps room for the
         // checkmark and the settings button, so the checkmarks line up.
         let settingsSections = Set(sections.indices.filter { index in
@@ -299,7 +301,6 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
             cell.backgroundConfiguration = StillList.cellBackground()
         }
 
-        let sections = sections
         headerRegistration = .init(elementKind: UICollectionView.elementKindSectionHeader) { header, _, indexPath in
             var content = UIListContentConfiguration.groupedHeader()
             content.text = sections[indexPath.section].header

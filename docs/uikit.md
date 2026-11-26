@@ -83,11 +83,12 @@ A game or toy runs full screen, and each of its modes (the versions of the game)
 - **A two-finger tap opens the menu.** `view.addStillTap(fingers: 2) { … }` adds a tap that recognises alongside the toy's own gestures and never cancels their touches, so a drag or flick carries on. Put it on the screen's root view. It is the series' only multi-finger tap.
 - **The menu** is `StillMenu`, presented with `menu.present(from: viewController)`. It is a navigation sheet at full height with the grabber: the app's logo in the bar (the title stays set, for VoiceOver), a line or two about the app centred above the list, inset-grouped sections built with `StillList`, and the version and credits centred in footnote type at the foot. Rows are `.choice` (a game mode: rounded headline, a line about it, the system checkmark on the current one), `.action` (tint text; give it a `Confirmation` if it loses progress, and the system asks first) and `.text` (how to play). Build the menu each time it opens, so it shows the app as it is. Choosing a row closes the menu, then runs the row's action, so its effect is seen.
 - **Switching mode** is choosing its row. The new mode starts with its game elements and nothing else.
+- **A mode's actions are on its row.** Pass `actions:` to the current mode's `.choice` ("New game", "Clear the board", undo): each `StillMenu.RowAction` is a button on the row, before the checkmark, in the inherited tint. Give it an SF Symbol where the symbol is plain (`arrow.uturn.backward` for undo, `eraser` for clearing the board); without one it is drawn as its word, as "New game" must be (docs/brand.md). Give it a `Confirmation` if it loses progress. Tapping it closes the menu and then acts; tapping the rest of the row still chooses the mode. Leave out an action with nothing to act on. VoiceOver gets each as an action on the row.
 - **A mode's settings** are reached from its row. Pass `settings:` to `.choice` and the row gets a settings button (a gear) beside the checkmark. Tapping the row still chooses the mode; tapping the gear pushes the settings screen you return onto the menu, titled with the mode's name, without switching mode. Build it as an ordinary list (`Still.groupedBackground`, `StillList.insetGrouped()`, system switches, steppers and pickers), apply and save each change as it is made, and give it no Save or Done: the back button and closing the menu are enough. In a section where any mode has settings, every row keeps room for the gear, so the checkmarks line up.
 - **The selected mode and every mode's settings persist.** Both are kept between launches: the app opens in the game mode that was selected when it closed, and each mode's settings are as the person left them. Store them on the device with `UserDefaults`: save the selected mode whenever it changes, save each setting as it changes (one key per setting, prefixed with the mode), and read both back at launch. Never sync them or send them anywhere. StillKit stores nothing: the app owns its settings, and the menu, built fresh each time it opens, shows whatever the app has restored.
-- **Shake to undo.** A mode that can take a move back gets undo from a shake of the device, never a button. `view.addStillUndo { … }` returns a `StillShakeToUndo`; set its `isEnabled` from the current mode (and to false when there is nothing to undo). It acts only while nothing is presented over the game, so shaking with the menu open does nothing. It follows the person's Shake to Undo setting (Settings › Accessibility › Touch): when `StillShakeToUndo.isAvailable` is false, put an "Undo" action in the menu's section for the current mode instead. Don't register UIKit `undoManager` actions on a game screen, or the system's own shake alert can appear too.
+- **Shake to undo.** A mode that can take a move back gets undo from a shake of the device, never a button. `view.addStillUndo { … }` returns a `StillShakeToUndo`; set its `isEnabled` from the current mode (and to false when there is nothing to undo). It acts only while nothing is presented over the game, so shaking with the menu open does nothing. It follows the person's Shake to Undo setting (Settings › Accessibility › Touch): when `StillShakeToUndo.isAvailable` is false, add an "Undo" row action (`symbol: "arrow.uturn.backward"`) to the current mode's row instead. Don't register UIKit `undoManager` actions on a game screen, or the system's own shake alert can appear too.
 - **The hint teaches the gestures.** When a game begins (on launch, and after switching mode), call `hint.playGameHint(canUndo:)` on a `StillHintView`. A few seconds in, a soft tint pebble fades in with "A two-finger tap opens the menu.", adding "Shake your device to undo." when the mode supports undo and the person allows it, then fades away. Opening the menu stops it. It is the only thing besides the game that a mode may show, and only for a moment. Use `StillHintView.pinned(to:)` for the bottom of the screen, or place it where it covers nothing being played with.
-- **VoiceOver** keeps multi-finger taps for itself. Give the game's view the same things as accessibility custom actions ("Open menu", and `undo.accessibilityAction` while the mode supports undo), and open the menu on the magic tap (`accessibilityPerformMagicTap`). The menu's settings button is also offered as a "Settings" action on its row. `StillHintView` stays silent while VoiceOver runs.
+- **VoiceOver** keeps multi-finger taps for itself. Give the game's view the same things as accessibility custom actions ("Open menu", and `undo.accessibilityAction` while the mode supports undo), and open the menu on the magic tap (`accessibilityPerformMagicTap`). The menu's row buttons and settings button are also offered as actions on their row. `StillHintView` stays silent while VoiceOver runs.
 
 ```swift
 lazy var hint = StillHintView.pinned(to: view)
@@ -110,9 +111,9 @@ func start(_ mode: Mode) {
 }
 
 func showMenu() {
-    var actions: [StillMenu.Item] = [.action("New game") { [weak self] in self?.game.reset() }]
+    var actions: [StillMenu.RowAction] = [.init("New game") { [weak self] in self?.game.reset() }]
     if current.supportsUndo && !StillShakeToUndo.isAvailable {
-        actions.insert(.action("Undo") { [weak self] in self?.game.undo() }, at: 0)
+        actions.insert(.init("Undo", symbol: "arrow.uturn.backward") { [weak self] in self?.game.undo() }, at: 0)
     }
     StillMenu(
         title: "minibalism",
@@ -121,11 +122,11 @@ func showMenu() {
         sections: [
             .init("Game mode", items: modes.map { mode in
                 .choice(mode.name, detail: mode.summary, isSelected: mode == current,
+                        actions: mode == current ? actions : [],
                         settings: mode.hasSettings ? { ModeSettingsViewController(mode) } : nil) { [weak self] in
                     self?.start(mode)
                 }
             }),
-            .init(current.name, items: actions),
         ],
         footer: [StillMenu.version(of: "minibalism"), "A contention product."]
     ).present(from: self)

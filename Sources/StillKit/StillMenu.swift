@@ -4,9 +4,9 @@ import UIKit
 //
 // A game or toy's screen shows the game and nothing else: no buttons, bars or labels. So
 // the series gives it one menu, opened by a two-finger tap: the app's logo in the navigation
-// bar, a line about the app, an inset-grouped list (game modes, each with its settings if it
-// has any, then the current mode's actions and how to play it), and the version and credits
-// at the foot. See docs/uikit.md, step 6.
+// bar, a line about the app, an inset-grouped list (game modes, the current one with its
+// actions on its row, each with its settings if it has any, then how to play), and the
+// version and credits at the foot. See docs/uikit.md, step 6.
 
 /// The series menu. Describe it, then call `present(from:)`.
 ///
@@ -18,6 +18,7 @@ import UIKit
 ///     sections: [
 ///         .init("Game mode", items: modes.map { mode in
 ///             .choice(mode.name, detail: mode.summary, isSelected: mode == current,
+///                     actions: mode == current ? [.init("New game") { game.reset() }] : [],
 ///                     settings: mode.hasSettings ? { ModeSettingsViewController(mode) } : nil) {
 ///                 switchTo(mode)
 ///             }
@@ -68,7 +69,8 @@ public struct StillMenu {
     /// One row.
     public struct Item {
         enum Kind {
-            case choice(detail: String?, isSelected: Bool, settings: (@MainActor () -> UIViewController)?)
+            case choice(detail: String?, isSelected: Bool, actions: [RowAction],
+                        settings: (@MainActor () -> UIViewController)?)
             case action(role: Role, confirmation: Confirmation?)
             case text
         }
@@ -80,6 +82,10 @@ public struct StillMenu {
         /// One of a set to choose between, such as a game mode: its name in rounded type,
         /// what it is beneath, and a checkmark when it is the current one.
         ///
+        /// Give the current mode its `actions` ("New game", undo, "Clear the board"). They
+        /// are buttons on its row, before the checkmark; each closes the menu and then acts
+        /// on the mode's game. Tapping the rest of the row still chooses the mode.
+        ///
         /// Give a mode with its own settings a `settings` closure. The row then shows a
         /// settings button: tapping the row still chooses the mode, and tapping the button
         /// pushes the closure's view controller onto the menu, titled with the mode's name
@@ -87,9 +93,11 @@ public struct StillMenu {
         /// screen like any other list (`Still.groupedBackground`, `StillList`), and apply
         /// changes as they are made: there is no Save.
         public static func choice(_ title: String, detail: String? = nil, isSelected: Bool,
+                                  actions: [RowAction] = [],
                                   settings: (@MainActor () -> UIViewController)? = nil,
                                   action: @escaping @MainActor () -> Void) -> Item {
-            Item(title: title, kind: .choice(detail: detail, isSelected: isSelected, settings: settings),
+            Item(title: title,
+                 kind: .choice(detail: detail, isSelected: isSelected, actions: actions, settings: settings),
                  handler: action)
         }
 
@@ -103,6 +111,28 @@ public struct StillMenu {
         /// Text to read, such as how to play. Not selectable.
         public static func text(_ text: String) -> Item {
             Item(title: text, kind: .text, handler: nil)
+        }
+    }
+
+    /// A button on a `.choice` row: something to do to that mode's game.
+    ///
+    /// With a `symbol`, it is drawn as that SF Symbol, and its title is what VoiceOver reads.
+    /// Without one, it is drawn as its title in tint text. Use a word when a symbol would
+    /// mislead (docs/brand.md): a new round is "New game", never a plus or circular arrows.
+    public struct RowAction {
+        public var title: String
+        /// An SF Symbol name, such as "arrow.uturn.backward" for undo.
+        public var symbol: String?
+        /// The question asked first, for an action that loses progress.
+        public var confirmation: Confirmation?
+        let handler: @MainActor () -> Void
+
+        public init(_ title: String, symbol: String? = nil, confirmation: Confirmation? = nil,
+                    action: @escaping @MainActor () -> Void) {
+            self.title = title
+            self.symbol = symbol
+            self.confirmation = confirmation
+            self.handler = action
         }
     }
 
@@ -232,18 +262,24 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
         let sections = sections
 
         // In a section where any choice has settings, every choice row keeps room for the
-        // checkmark and the settings button, so the checkmarks line up.
-        let settingsSections = Set(sections.indices.filter { index in
-            sections[index].items.contains { item in
-                if case .choice(_, _, .some) = item.kind { return true }
-                return false
-            }
-        })
+        // settings button, so the checkmarks line up. Where any choice has settings or row
+        // actions, every choice row draws the same checkmark, for the same reason.
+        func sectionIndices(where test: @escaping (StillMenu.Item.Kind) -> Bool) -> Set<Int> {
+            Set(sections.indices.filter { index in sections[index].items.contains { test($0.kind) } })
+        }
+        let settingsSections = sectionIndices { kind in
+            if case .choice(_, _, _, .some) = kind { return true }
+            return false
+        }
+        let accessorySections = sectionIndices { kind in
+            if case .choice(_, _, let actions, let settings) = kind { return !actions.isEmpty || settings != nil }
+            return false
+        }
 
         cellRegistration = .init { [weak self] cell, indexPath, item in
             cell.accessibilityCustomActions = nil
             switch item.kind {
-            case .choice(let detail, let isSelected, let settings):
+            case .choice(let detail, let isSelected, let actions, let settings):
                 var content = UIListContentConfiguration.subtitleCell()
                 content.text = item.title
                 content.secondaryText = detail
@@ -257,7 +293,7 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                 cell.contentConfiguration = content
                 cell.accessibilityTraits = isSelected ? [.button, .selected] : [.button]
 
-                guard settingsSections.contains(indexPath.section) else {
+                guard accessorySections.contains(indexPath.section) else {
                     cell.accessories = isSelected ? [.checkmark()] : []
                     break
                 }
@@ -265,18 +301,29 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                 if let settings {
                     open = { self?.showSettings(settings(), for: item.title) }
                 }
-                let accessory = StillMenuChoiceAccessory(isSelected: isSelected, title: item.title,
-                                                         openSettings: open, traits: cell.traitCollection)
+                let accessory = StillMenuChoiceAccessory(
+                    isSelected: isSelected, title: item.title, actions: actions,
+                    run: { action, source in self?.run(action.handler, confirmation: action.confirmation, from: source) },
+                    showsSettingsColumn: settingsSections.contains(indexPath.section),
+                    openSettings: open, traits: cell.traitCollection)
+                // The accessory's own width: a standard width would let row actions run over the text.
                 cell.accessories = [.customView(configuration: .init(
-                    customView: accessory, placement: .trailing(displayed: .always), maintainsFixedSize: true))]
-                if let open {
-                    cell.accessibilityCustomActions = [
-                        UIAccessibilityCustomAction(name: "Settings") { _ in
-                            open()
-                            return true
-                        },
-                    ]
+                    customView: accessory, placement: .trailing(displayed: .always),
+                    reservedLayoutWidth: .actual, maintainsFixedSize: true))]
+                // VoiceOver reads the row as one element, so its buttons are offered as actions.
+                var custom = zip(actions, accessory.actionButtons).map { action, button in
+                    UIAccessibilityCustomAction(name: action.title) { _ in
+                        self?.run(action.handler, confirmation: action.confirmation, from: button)
+                        return true
+                    }
                 }
+                if let open {
+                    custom.append(UIAccessibilityCustomAction(name: "Settings") { _ in
+                        open()
+                        return true
+                    })
+                }
+                cell.accessibilityCustomActions = custom.isEmpty ? nil : custom
 
             case .action(let role, _):
                 var content = UIListContentConfiguration.cell()
@@ -364,23 +411,31 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
         let item = sections[indexPath.section].items[indexPath.item]
         guard let handler = item.handler else { return }
 
-        if case .action(_, let confirmation?) = item.kind {
-            let alert = UIAlertController(title: confirmation.title, message: confirmation.message,
-                                          preferredStyle: .actionSheet)
-            let style: UIAlertAction.Style = confirmation.isDestructive ? .destructive : .default
-            alert.addAction(UIAlertAction(title: confirmation.confirm, style: style) { [weak self] _ in
-                self?.close(then: handler)
-            })
-            alert.addAction(UIAlertAction(title: confirmation.cancel, style: .cancel))
-            // On iPad the action sheet points at the row it asks about.
-            if let popover = alert.popoverPresentationController, let cell = collectionView.cellForItem(at: indexPath) {
-                popover.sourceView = cell
-                popover.sourceRect = cell.bounds
-            }
-            present(alert, animated: true)
-        } else {
+        var confirmation: StillMenu.Confirmation?
+        if case .action(_, let asked) = item.kind { confirmation = asked }
+        run(handler, confirmation: confirmation, from: collectionView.cellForItem(at: indexPath))
+    }
+
+    /// Asks first when there is a confirmation, then closes the menu and acts.
+    private func run(_ handler: @escaping @MainActor () -> Void, confirmation: StillMenu.Confirmation?,
+                     from source: UIView?) {
+        guard let confirmation else {
             close(then: handler)
+            return
         }
+        let alert = UIAlertController(title: confirmation.title, message: confirmation.message,
+                                      preferredStyle: .actionSheet)
+        let style: UIAlertAction.Style = confirmation.isDestructive ? .destructive : .default
+        alert.addAction(UIAlertAction(title: confirmation.confirm, style: style) { [weak self] _ in
+            self?.close(then: handler)
+        })
+        alert.addAction(UIAlertAction(title: confirmation.cancel, style: .cancel))
+        // On iPad the action sheet points at the row or button it asks about.
+        if let popover = alert.popoverPresentationController, let source {
+            popover.sourceView = source
+            popover.sourceRect = source.bounds
+        }
+        present(alert, animated: true)
     }
 
     /// Closes the menu, then acts, so the action's effect is seen.
@@ -408,22 +463,54 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
     }
 }
 
-/// The trailing end of a choice row in a section with settings: the checkmark (kept in place
-/// but invisible on rows that are not current, so checkmarks line up) and the settings
-/// button (likewise kept in place on modes without settings).
+/// The trailing end of a choice row in a section with row actions or settings: the row's
+/// action buttons, then the checkmark (kept in place but invisible on rows that are not
+/// current, so checkmarks line up), then, in a section with settings, the settings button
+/// (likewise kept in place on modes without settings).
 final class StillMenuChoiceAccessory: UIView {
     private static let buttonSide: CGFloat = 44
 
     private let checkmark = UIImageView()
     private let button = UIButton(configuration: .plain())
+    /// One per row action, in order. The popover anchor for a confirmation.
+    private(set) var actionButtons: [UIButton] = []
 
-    init(isSelected: Bool, title: String, openSettings: (@MainActor () -> Void)?, traits: UITraitCollection) {
+    init(isSelected: Bool, title: String, actions: [StillMenu.RowAction],
+         run: @escaping @MainActor (StillMenu.RowAction, UIView) -> Void,
+         showsSettingsColumn: Bool, openSettings: (@MainActor () -> Void)?, traits: UITraitCollection) {
         super.init(frame: .zero)
         let font = UIFont.preferredFont(forTextStyle: .body, compatibleWith: traits)
+        let symbols = UIImage.SymbolConfiguration(font: font)
+
+        // Drawn in the inherited tint: they are things to tap.
+        actionButtons = actions.map { action in
+            var configuration = UIButton.Configuration.plain()
+            if let symbol = action.symbol {
+                configuration.image = UIImage(systemName: symbol)
+                configuration.preferredSymbolConfigurationForImage = symbols
+                configuration.contentInsets = .zero
+            } else {
+                configuration.title = action.title
+                configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+                    var outgoing = incoming
+                    outgoing.font = font
+                    return outgoing
+                }
+                configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: StillSpace.s2,
+                                                                      bottom: 0, trailing: StillSpace.s2)
+            }
+            let actionButton = UIButton(configuration: configuration)
+            actionButton.accessibilityLabel = action.title
+            actionButton.addAction(UIAction { [weak actionButton] _ in
+                guard let actionButton else { return }
+                run(action, actionButton)
+            }, for: .primaryActionTriggered)
+            addSubview(actionButton)
+            return actionButton
+        }
 
         checkmark.image = UIImage(systemName: "checkmark",
-                                  withConfiguration: UIImage.SymbolConfiguration(font: font)
-                                      .applying(UIImage.SymbolConfiguration(weight: .semibold)))
+                                  withConfiguration: symbols.applying(UIImage.SymbolConfiguration(weight: .semibold)))
         checkmark.contentMode = .center
         checkmark.alpha = isSelected ? 1 : 0
         checkmark.isAccessibilityElement = false
@@ -432,7 +519,7 @@ final class StillMenuChoiceAccessory: UIView {
         var configuration = UIButton.Configuration.plain()
         configuration.image = UIImage(systemName: "gearshape")
         // Drawn in the inherited tint: it is something to tap.
-        configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(font: font)
+        configuration.preferredSymbolConfigurationForImage = symbols
         configuration.contentInsets = .zero
         button.configuration = configuration
         button.accessibilityLabel = "\(title) settings"
@@ -443,16 +530,30 @@ final class StillMenuChoiceAccessory: UIView {
             button.isUserInteractionEnabled = false
             button.isAccessibilityElement = false
         }
+        button.isHidden = !showsSettingsColumn
         addSubview(button)
 
+        // Each button a full 44pt target, laid out leading to trailing.
         let checkSize = checkmark.intrinsicContentSize
         let height = max(Self.buttonSide, checkSize.height)
-        frame.size = CGSize(width: checkSize.width + StillSpace.s1 + Self.buttonSide, height: height)
-        checkmark.frame = CGRect(x: 0, y: (height - checkSize.height) / 2,
+        var x: CGFloat = 0
+        for actionButton in actionButtons {
+            let width = max(Self.buttonSide, actionButton.intrinsicContentSize.width)
+            actionButton.frame = CGRect(x: x, y: (height - Self.buttonSide) / 2, width: width, height: Self.buttonSide)
+            x += width
+        }
+        if !actionButtons.isEmpty { x += StillSpace.s1 }
+        checkmark.frame = CGRect(x: x, y: (height - checkSize.height) / 2,
                                  width: checkSize.width, height: checkSize.height)
-        // A full 44pt target; the gear sits at its centre.
-        button.frame = CGRect(x: frame.width - Self.buttonSide, y: (height - Self.buttonSide) / 2,
-                              width: Self.buttonSide, height: Self.buttonSide)
+        x += checkSize.width
+        if showsSettingsColumn {
+            x += StillSpace.s1
+            // The gear sits at the centre of its target.
+            button.frame = CGRect(x: x, y: (height - Self.buttonSide) / 2,
+                                  width: Self.buttonSide, height: Self.buttonSide)
+            x += Self.buttonSide
+        }
+        frame.size = CGSize(width: x, height: height)
     }
 
     @available(*, unavailable)

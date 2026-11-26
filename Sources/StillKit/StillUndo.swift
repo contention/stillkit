@@ -20,7 +20,7 @@ import UIKit
 ///
 /// It follows the person's Shake to Undo setting (Settings > Accessibility > Touch). When
 /// that is off (`isAvailable` is false), shaking does nothing, the game hint leaves undo out,
-/// and the app offers "Undo" in the menu instead. VoiceOver users get `accessibilityAction`.
+/// and the app offers undo as a button on the current mode's row in the menu instead. VoiceOver users get `accessibilityAction`.
 ///
 /// To listen for shakes it becomes first responder. Do not use it on a screen with text
 /// fields, and do not also register undo with UIKit's `undoManager` on the same screen, or
@@ -32,7 +32,7 @@ public final class StillShakeToUndo: UIView {
     public var isEnabled = true
 
     /// Whether the person allows shake to undo (Settings > Accessibility > Touch > Shake to
-    /// Undo). When false, offer undo in the menu instead.
+    /// Undo). When false, offer undo on the current mode's row in the menu instead.
     public static var isAvailable: Bool { UIAccessibility.isShakeToUndoEnabled }
 
     private let action: @MainActor () -> Void

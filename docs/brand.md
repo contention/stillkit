@@ -1,6 +1,6 @@
 # Still, the brand book
 
-Still is the shared identity for a series of small, calm iOS apps and toys. Free, no ads, no tracking, no accounts, ever. It is a thin skin over UIKit, not a replacement for it: Apple's controls, layouts and behaviours stay; the palette, one typeface twist, one shape rule and a few signature elements make every app recognisably part of the set.
+Still is the shared identity for a series of small, calm iOS apps and toys. Free, no ads, no tracking, no accounts, ever. It is a thin skin over UIKit, not a replacement for it: Apple's controls, layouts and behaviours stay; the palette, one typeface twist, one shape rule and a shared game shell make every app recognisably part of the set.
 
 ## The idea in one line
 
@@ -44,7 +44,7 @@ Rules:
 - `destructive` stays Apple's red. It is the one colour outside the palette, on purpose: it means danger everywhere on iOS.
 - Follow the system appearance. Never force light or dark with `overrideUserInterfaceStyle`.
 
-Every text pair above holds 4.5:1 in both modes (`label-tertiary` is placeholder-only at 3:1). Contrast figures for every pair are in the Still design system on Claude.
+Every text pair above holds 4.5:1 in both modes (`label-tertiary` is placeholder-only at 3:1). Live contrast ratios for every pair appear in `Showcase/StillShowcase.xcodeproj`.
 
 ## Type
 
@@ -90,24 +90,43 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 - App icons share one template: `night` ground, a single simple glyph in `mist`, at most one accent in `sage` or `moss`. Provide the dark and tinted variants iOS asks for; the dark variant uses `night-900`.
 - No emoji in UI.
 
-## Game screens and the menu
+## Splash
 
-**A game shows the game and nothing else.** Every mode of a full-screen game or toy (each version of the game) shows only its game elements: no buttons, bars, labels, settings controls or floating glass. The quiet hint pebble is the one exception, and only for a moment.
+Every Still game opens the same way on cold launch (never when returning from the background):
 
-Everything else lives in one menu, opened the same way in every app: **a two-finger tap**. It is a sheet with the app's logo in the bar, a line or two about the app, the game modes (the current one ticked, with its actions as buttons on its row, and a settings button on each mode that has its own settings), how to play, and the version and credits at the foot. Choosing a mode switches to it.
+- The launch screen hands over seamlessly on `Still.canvas` (`LaunchBackground`: Mist in light mode, Night in dark mode).
+- StillKit centres the app's logo and name (in `StillFont.rounded(.largeTitle)`) on `Still.canvas`, fades them in calmly, and holds briefly.
+- One element of the splash (a piece of the logo, or another view the app chooses) carries over into the restored game mode: it moves smoothly with a bounce-free spring to its landing spot in the game while the rest of the splash fades away, and becomes part of that game.
+- Under Reduce Motion, the splash crossfades without movement (0.3s).
+- A mode with no landing place still works: the carried element fades away with the rest of the splash.
+- VoiceOver announces the app name while the splash is up, then moves focus to the game view when the splash ends.
 
-- **Undo is a shake.** A mode that can take a move back undoes on a shake of the device, never with a button. If the person has turned Shake to Undo off, the current mode's row offers an undo button instead.
-- **A mode's settings are in the menu**, behind the settings button on its row. They apply as they change; there is no Save.
-- **Nothing is forgotten.** Both the selected game mode and each mode's settings are kept between launches, so the app opens in the mode the person chose, with every mode set up as they left it. They are kept on the device only: never synced, never sent anywhere.
-- **The hint teaches the gestures.** A few seconds after a game begins, a quiet pebble fades in, says "A two-finger tap opens the menu.", adds "Shake your device to undo." when the mode supports undo, and fades away.
-- **VoiceOver users get the same things as actions**: open menu, undo, each mode's row buttons and its settings.
+## Game screens, the menu and series copy
 
-`StillMenu`, `addStillTap(fingers:)`, `addStillUndo(action:)` and `StillHintView` build it; see `docs/uikit.md`, step 6.
+**A game shows the game and nothing else.** Every mode of a full-screen game or toy shows only its game elements: no buttons, bars, labels, settings controls or floating glass. The quiet hint pebble is the one exception, and only for a moment.
+
+Everything else is owned by `StillGameHost` and lives in one menu, opened the same way in every app: **a two-finger tap**. The menu has a fixed layout across the series:
+
+1. **Header**: the app's logo in the navigation bar (with the app name set for VoiceOver) and a line or two about the app centred above the list.
+2. **Game modes**: every mode in order, the current one ticked, its actions as symbol buttons on its row (`.newGame` / `.clear`), and a settings button on each mode that declares settings.
+3. **How to play**: the current mode's and app's instructions, followed by StillKit's localisable gesture notes.
+4. **Series section**: StillKit's shared localisable promise ("no ads, no tracking, no accounts"), privacy line (settings stay on the device) and "More Still apps" row (disabled until it has a destination). Apps cannot remove or reorder this section.
+5. **Footer**: the app's version and credits centred in footnote type.
+
+All shared series copy lives in one localisable file in StillKit (`Sources/StillKit/Resources/en.lproj/Localizable.strings`), so updating the series copy is a single package bump.
+
+- **Undo is a shake.** A mode that can take a move back undoes on a shake of the device, never with a button. If the person has turned Shake to Undo off, the host automatically offers an undo button on the current mode's row instead.
+- **Mode settings are declarative.** A mode lists its `[StillSetting]` values (toggle, choice, stepper, slider) and the host builds the settings screen, applies changes live (no Save), and persists them.
+- **Nothing is forgotten.** Both the selected game mode and every mode's settings are kept on the device in `UserDefaults`, never synced or sent anywhere.
+- **The hint teaches the gestures.** When a game begins, the host fades in a quiet pebble with the tap note (and the shake note when the mode supports undo and the person allows it), then fades it away.
+- **VoiceOver users get the same things as actions**: open menu, undo, each mode's row buttons and its settings, plus the magic tap to open the menu.
+
+`StillGameHost`, `StillGame`, `StillGameMode`, `StillSetting` and `StillSplash` build it; see `docs/uikit.md`.
 
 ## Voice
 
 - Plain, short, warm, second person. "Tap anywhere to begin." not "Let's get started!"
-- No exclamation marks, no streaks, no scores you can lose, no urgency ("Don't miss…", "Hurry").
+- No exclamation marks, no streaks, no scores you can lose, no urgency ("Don't miss...", "Hurry").
 - Say less. A toy with one hint line is better than a tutorial.
 
 ## Recognisability checklist
@@ -123,9 +142,9 @@ A new app belongs to the series when it has all five:
 ## Accessibility
 
 - Contrast as above, in both modes.
-- Support Dynamic Type, VoiceOver (every game piece gets an `accessibilityLabel` and, where it moves, an adjustable trait), Reduce Motion and Increase Contrast. For Increase Contrast, deepen `label-secondary` to `label` and `tint` toward `slate` (light) or `mist` (dark).
+- Support Dynamic Type, VoiceOver (every interactive game piece gets an `accessibilityLabel` and, where it moves, an adjustable trait), Reduce Motion and Increase Contrast.
 - Never carry meaning by colour alone: game pieces differ in lightness (`piece-strong`, `piece-mid`) and in shape.
 
 ## Building it
 
-`docs/uikit.md` explains how StillKit layers this over UIKit. The code is `Sources/StillKit/`. To adopt it in an app, follow `AGENTS.md`.
+`docs/uikit.md` explains how StillKit layers this over UIKit and how `StillGameHost` works. The code is `Sources/StillKit/`. To start a new app or adopt StillKit in an existing app, follow `AGENTS.md`.

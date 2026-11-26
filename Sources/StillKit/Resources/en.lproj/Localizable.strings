@@ -1,0 +1,20 @@
+/* Series copy placeholders - replace with final wording */
+"series.section.title" = "[Series section: Still]";
+"series.promise" = "[Series line: no ads, no tracking, no accounts]";
+"series.privacy" = "[Series line: settings and progress stay on this device]";
+"series.moreApps" = "[Series row: More Still apps (destination placeholder)]";
+"series.gesture.menu" = "[Series gesture note: two-finger tap opens the menu]";
+"series.gesture.undoShake" = "[Series gesture note: shake your device to undo]";
+"series.gesture.undoMenu" = "[Series gesture note: use the undo button on the current mode row]";
+
+/* Shell UI copy */
+"shell.hint.menu" = "A two-finger tap opens the menu.";
+"shell.hint.undo" = "Shake your device to undo.";
+"shell.menu.modesHeader" = "Game mode";
+"shell.menu.howToPlayHeader" = "How to play";
+"shell.action.openMenu" = "Open menu";
+"shell.action.undo" = "Undo";
+"shell.action.settings" = "Settings";
+"shell.action.newGame" = "New game";
+"shell.action.clearBoard" = "Clear the board";
+"shell.action.cancel" = "Cancel";

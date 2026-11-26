@@ -1,54 +1,128 @@
 # Layering over UIKit
 
-How to put Still on top of UIKit without rebuilding UIKit. The code is `Sources/StillKit/StillKit.swift`; this page explains what it does and why.
+How StillKit sits over UIKit without rebuilding UIKit. Visual primitives live in `Sources/StillKit/StillKit.swift`; the game shell lives in `Sources/StillKit/StillGame.swift`, `StillSetting.swift` and `StillGameHost.swift`.
 
-## The three layers
+## The layers
 
-1. **Roles.** One file defines semantic colours (`Still.tint`, `Still.background`, `Still.label`…) as dynamic `UIColor`s that resolve per light and dark mode, plus `StillFont.rounded(_:)` for display text. Views only ever name roles. Changing the palette later is a one-file edit.
-2. **Global appearance.** Called once per window, before it shows. Sets the window tint, navigation titles and the few controls that do not inherit tint in every state. This is where 80% of the identity comes from, in about forty lines.
-3. **Custom elements.** Toys, canvases, sheets, and the series menu, shake to undo and hint (step 6). Built from the same roles, the radius and spacing tokens, the house spring and soft haptics, so they sit next to UIKit's controls without looking foreign.
+1. **Roles and primitives.** Semantic colours (`Still.tint`, `Still.background`, `Still.canvas`, `Still.label`...), rounded display type (`StillFont.rounded(_:)`), capsule button presets, continuous corners, spacing tokens, bounce-free motion and soft haptics. Views only ever name roles.
+2. **Global appearance.** `StillAppearance.apply(to: window)` sets the window tint, navigation titles and the few controls that do not inherit tint in every state.
+3. **The game shell (`StillGameHost`).** For every Still game or toy, StillKit owns the entire shell: window setup, cold-launch splash and carry-over animation, mode switching, series menu, declarative mode settings screens, persistence, two-finger tap, shake to undo, hints, VoiceOver and shared series copy. The shell plumbing (`StillMenu`, `StillTapGesture`, `StillHintView`, `StillShakeToUndo`) is internal to the package so every app shares the exact same shell.
 
-All three layers ship in this package. Apps add it with Swift Package Manager and `import StillKit`.
+## Building a Still game
 
-## Step 1: set it up once
+A game app writes only its `StillGame`, its `StillSplash` and its `StillGameMode`s.
+
+### 1. Launch the host
 
 ```swift
 // SceneDelegate.swift
-func scene(_ scene: UIScene, willConnectTo session: UISceneSession,
-           options connectionOptions: UIScene.ConnectionOptions) {
-    guard let windowScene = scene as? UIWindowScene else { return }
-    let window = UIWindow(windowScene: windowScene)
-    StillAppearance.apply(to: window)
-    window.rootViewController = RootViewController()
-    window.makeKeyAndVisible()
-    self.window = window
+import UIKit
+import StillKit
+
+final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession,
+               options connectionOptions: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        window = StillGameHost.launch(MyGame(), in: windowScene)
+    }
 }
 ```
 
-Also set the asset catalog's **AccentColor** to the same two values as `tint` (#4b6e68 light, #99b59d dark). That colours the few places that read the accent before your code runs, and keeps storyboards and previews in sync.
+`StillGameHost.launch(_:in:)` creates the window, calls `StillAppearance.apply(to:)`, runs any one-time storage migration, restores the saved mode and settings, plays the cold-launch splash and hosts the active mode full screen on `Still.canvas`.
 
-## Step 2: grounds on every screen
+### 2. Define the game and splash
 
-UIKit's `systemBackground` and friends cannot be redefined globally, so each screen sets its ground from a role. Make it automatic with a base class or a one-liner:
+Conform to `StillGame`:
 
 ```swift
-override func viewDidLoad() {
-    super.viewDidLoad()
-    view.backgroundColor = Still.background          // plain screens
-    // or Still.groupedBackground for settings-style lists
+@MainActor
+final class MyGame: StillGame {
+    let name = "MyGame"
+    var logo: UIView? { MyLogoView(size: 24) }
+    let about = "One quiet line about the game."
+    let howToPlay = ["Move pieces gently across the canvas."]
+    let credits = ["Made by Your Name."]
+    let modes: [any StillGameMode] = [DriftMode(), TraceMode()]
+
+    func makeSplash() -> StillSplash {
+        // StillKit centres logo and name on Still.canvas, then carries carriedView
+        // into the restored mode's splashLanding(in:carriedFrame:) while the rest fades.
+        StillSplash(logo: logoContainer, showsName: true, carriedView: pebbleView)
+    }
 }
 ```
 
-Lists: use `UICollectionView` with `StillList.insetGrouped()` for the layout and `StillList.cellBackground()` in the cell registration.
+Set `showsName: false` on `StillSplash` when `logo` itself is the app's wordmark. VoiceOver always announces `game.name`, then moves focus to the game view when the splash ends. Under Reduce Motion, the splash crossfades without movement. The splash runs on cold launch only, never when returning from the background.
 
-## Step 3: what to customise, and what to leave alone
+### 3. Build each mode
+
+Each mode conforms to `StillGameMode`:
+
+- `static var id: String`: stable persistence key. Never change it after shipping.
+- `makeGameView(context:) -> UIView`: returns a plain `UIView` (not a view controller) containing game elements only. No buttons, bars, toolbars, tab bars, visual effect views or `overrideUserInterfaceStyle`. In debug builds, `StillGameHost` asserts that the view tree contains none of these.
+- `splashLanding(in:carriedFrame:) -> StillSplashLanding?`: returns where the splash's carried element lands (`StillSplashLanding(onto: view, in: gameView)` or `StillSplashLanding(frame: rect, onArrival: ...)`). Return `nil` if nothing lands in this mode; the element fades with the rest of the splash.
+- `supportsUndo`, `canUndo`, `undo()`: declare undo capability and availability. The host wires device shake to `undo()`, teaches it in the game hint when Shake to Undo is on, adds an Undo row button (`arrow.uturn.backward`) when Shake to Undo is off, and exposes Undo to VoiceOver.
+- `actions: [StillModeAction]`: symbol actions on the current mode's row (`.newGame` or `.clear`, both drawn as `arrow.clockwise`). Evaluated fresh each time the menu opens; omit any action with nothing to act on. Pass `StillConfirmation` when confirming loses progress.
+- `settings: [StillSetting]`: declarative settings (`.toggle`, `.choice`, `.stepper`, `.slider`). The host builds the inset-grouped settings screen, applies changes live with no Save button, persists them in `UserDefaults` on the device, and calls `settingDidChange(key:context:)`. Modes read values from `context.settings` (`bool`, `string`, `int`, `double`).
+- `begin()` and `end()`: lifecycle hooks called when a mode becomes active (after the splash on cold launch, or on mode switch) and when leaving a mode.
+- `deferredSystemGestureEdges`: return edges (such as `.bottom`) where a swipe should reach the game before system gestures.
+
+### 4. One-time storage migration
+
+When migrating an existing app onto `StillGameHost`, implement `migrateStorage(using:)` on your `StillGame` to copy legacy `UserDefaults` keys into StillKit's keys once without losing saved modes or settings:
+
+```swift
+func migrateStorage(using migration: StillStorageMigration) {
+    migration.migrateSelectedMode(fromLegacyKey: "selectedMode")
+    migration.migrateInt(fromLegacyKey: "Diffusion.ballCount", toMode: "Diffusion", settingKey: "ballCount")
+}
+```
+
+### 5. What the host builds in the menu
+
+The menu structure is fixed across the series and rebuilt fresh each time a two-finger tap (or VoiceOver action / magic tap) opens it:
+
+1. Logo and title in the navigation bar, `about` centred above the list.
+2. **Game mode** section: every mode in `modes` order, current mode checked, row actions on the current mode (including fallback Undo when Shake to Undo is off), and a settings gear on every mode with non-empty `settings`.
+3. **How to play** section: the current mode's `howToPlay`, the game's `howToPlay`, and StillKit's localisable gesture notes.
+4. **Series** section: StillKit's shared localisable promise, privacy line and disabled "More Still apps" row.
+5. **Footer**: version line (`name version (build)`) followed by `credits`.
+
+## Visual primitives (inside game views and non-game apps)
+
+### Appearance setup for non-game apps
+
+```swift
+// SceneDelegate.swift (non-game app)
+let window = UIWindow(windowScene: windowScene)
+StillAppearance.apply(to: window)
+window.rootViewController = RootViewController()
+window.makeKeyAndVisible()
+self.window = window
+```
+
+Set the asset catalog's **AccentColor** to `#4B6E68` (Any) and `#99B59D` (Dark). For games, set **LaunchBackground** to `#CAD2C5` (Any) and `#2F3E46` (Dark), matching `Still.canvas`, and point `UILaunchScreen.UIColorName` at `LaunchBackground`.
+
+### Grounds and lists
+
+```swift
+view.backgroundColor = Still.background          // plain screens
+// or Still.groupedBackground for settings-style lists
+// or Still.canvas for game views
+```
+
+Lists use `UICollectionView` with `StillList.insetGrouped()` for the layout and `StillList.cellBackground()` in the cell registration.
+
+### What to customise, and what to leave alone
 
 | Element | Do | Leave alone |
 | --- | --- | --- |
 | Window | `tintColor = Still.tint` | `overrideUserInterfaceStyle` (follow the system) |
 | Navigation bar | Title fonts (rounded) and colour | Backgrounds on iOS 26 (Liquid Glass picks up your ground); bar button colours |
 | Tab bar | Nothing on iOS 26: selected items follow the tint | Backgrounds, item colours |
-| Buttons | `.stillPrimary`, `.stillSecondary`, `.stillPlain`: capsules | System `.glass()` buttons on iOS 26 if you use them: let them be glass |
+| Buttons | `.stillPrimary`, `.stillSecondary`, `.stillPlain`: capsules | System `.glass()` buttons on iOS 26 if used |
 | Switch, slider, progress, page control | Tint and track colours (in `apply`) | Thumb shapes, sizes |
 | Segmented control | Nothing: selected segment follows the ground | Custom fonts |
 | Lists | Grounds, cell background, separator colour | Cell layout, accessories, swipe actions |
@@ -56,85 +130,16 @@ Lists: use `UICollectionView` with `StillList.insetGrouped()` for the layout and
 | Destructive actions | `role: .destructive` (Apple's red) | Never recolour red into the palette |
 | SF Symbols | `.hierarchical` rendering, tint or `labelSecondary` | Multicolour, custom-drawn replacements |
 
-## Step 4: on iOS 26 and Liquid Glass
+### On iOS 26 and Liquid Glass
 
-Navigation bars, toolbars and tab bars float above content as glass, and Apple's own guidance (TN3106) is to stop putting custom backgrounds on them. That suits a calm identity: the glass takes on the Mist or Night ground underneath, and bar buttons draw in neutral glass rather than shouting in the accent. So on iOS 26:
+Navigation bars, toolbars and tab bars float above content as glass, and Apple's guidance (TN3106) is to remove custom bar backgrounds. `StillAppearance` sets titles only on iOS 26, and falls back to opaque `Still.background` bars with no hairline on iOS 18 and earlier.
 
-- Do not set bar backgrounds or bar button tint colours. `StillAppearance` sets titles only.
-- If one bar action must be prominent (a single Done), use the system's prominent bar button style, which takes the window tint.
-- Put a screen's actions in the bar as system bar buttons rather than custom floating buttons. Unrelated actions get their own glass: separate them with a fixed space (`UIBarButtonItem.fixedSpace(_:)`, or `ToolbarSpacer(.fixed)` in SwiftUI). A full-screen game or toy has no bars and no floating controls: its actions go in the series menu (step 6).
-- For your own floating controls on screens that are not a game or toy's modes, use the system glass effect (`UIGlassEffect`) rather than a custom blur, untinted or tinted with `Still.tint` at most. A game's modes have none.
-- On iOS 18 and earlier the same file draws opaque bars in `Still.background` with no hairline, so the apps look like the same family on older phones.
-
-## Step 5: custom elements
+### Custom elements inside game views
 
 - Colours: roles only. Toys use `Still.canvas`, `pieceStrong`, `pieceMid`, `pieceAmbient`.
-- Corners: `view.stillCorners(StillRadius.xl)` (continuous). Buttons: capsules.
+- Corners: `view.stillCorners(StillRadius.xl)` (continuous). Buttons: capsules (only outside game modes).
 - Type: `StillFont.rounded(.title2)`, `StillFont.numeral()`. Set `adjustsFontForContentSizeCategory = true`.
-- Motion: `StillMotion.animate { … }` (bounce 0; crossfade under Reduce Motion).
-- Haptics: `StillHaptics.touch()` on contact, `StillHaptics.snap()` as a dragged piece snaps into place, `StillHaptics.tick()` on control detents. Call `StillHaptics.prepare()` when a drag begins so the first snap is on time.
-- Depth: a piece being dragged gets the `shadow-lift` look (Night at 16% opacity, 24pt blur, 8pt down in light; black at 36% in dark). Nothing at rest casts a shadow.
-- Accessibility: every piece gets an `accessibilityLabel`; draggable pieces get `.adjustable` with increment and decrement.
-
-## Step 6: game screens, the menu, undo and hints
-
-A game or toy runs full screen, and each of its modes (the versions of the game) shows **the game and nothing else**: no buttons, bars, toolbars, labels, settings controls or floating glass. Everything you might do besides play lives in one place, the series menu, opened the same way in every app. The code is `Sources/StillKit/StillMenu.swift` and `Sources/StillKit/StillUndo.swift`.
-
-- **A two-finger tap opens the menu.** `view.addStillTap(fingers: 2) { … }` adds a tap that recognises alongside the toy's own gestures and never cancels their touches, so a drag or flick carries on. Put it on the screen's root view. It is the series' only multi-finger tap.
-- **The menu** is `StillMenu`, presented with `menu.present(from: viewController)`. It is a navigation sheet at full height with the grabber: the app's logo in the bar (the title stays set, for VoiceOver), a line or two about the app centred above the list, inset-grouped sections built with `StillList`, and the version and credits centred in footnote type at the foot. Rows are `.choice` (a game mode: rounded headline, a line about it, the system checkmark on the current one), `.action` (tint text; give it a `Confirmation` if it loses progress, and the system asks first) and `.text` (how to play). Build the menu each time it opens, so it shows the app as it is. Choosing a row closes the menu, then runs the row's action, so its effect is seen.
-- **Switching mode** is choosing its row. The new mode starts with its game elements and nothing else.
-- **A mode's actions are on its row.** Pass `actions:` to the current mode's `.choice` ("New game", "Clear the board", undo): each `StillMenu.RowAction` is a button on the row, before the checkmark, in the inherited tint. It is always an SF Symbol, the one the series uses for that action (docs/brand.md): `arrow.clockwise` for starting over (a new round, or clearing the board), `arrow.uturn.backward` for undo. Its title is what VoiceOver reads. Give it a `Confirmation` if it loses progress. Tapping it closes the menu and then acts; tapping the rest of the row still chooses the mode. Leave out an action with nothing to act on. VoiceOver gets each as an action on the row.
-- **A mode's settings** are reached from its row. Pass `settings:` to `.choice` and the row gets a settings button (a gear) beside the checkmark. Tapping the row still chooses the mode; tapping the gear pushes the settings screen you return onto the menu, titled with the mode's name, without switching mode. Build it as an ordinary list (`Still.groupedBackground`, `StillList.insetGrouped()`, system switches, steppers and pickers), apply and save each change as it is made, and give it no Save or Done: the back button and closing the menu are enough. In a section where any mode has settings, every row keeps room for the gear, so the checkmarks line up.
-- **The selected mode and every mode's settings persist.** Both are kept between launches: the app opens in the game mode that was selected when it closed, and each mode's settings are as the person left them. Store them on the device with `UserDefaults`: save the selected mode whenever it changes, save each setting as it changes (one key per setting, prefixed with the mode), and read both back at launch. Never sync them or send them anywhere. StillKit stores nothing: the app owns its settings, and the menu, built fresh each time it opens, shows whatever the app has restored.
-- **Shake to undo.** A mode that can take a move back gets undo from a shake of the device, never a button. `view.addStillUndo { … }` returns a `StillShakeToUndo`; set its `isEnabled` from the current mode (and to false when there is nothing to undo). It acts only while nothing is presented over the game, so shaking with the menu open does nothing. It follows the person's Shake to Undo setting (Settings › Accessibility › Touch): when `StillShakeToUndo.isAvailable` is false, add an "Undo" row action (`symbol: "arrow.uturn.backward"`) to the current mode's row instead. Don't register UIKit `undoManager` actions on a game screen, or the system's own shake alert can appear too.
-- **The hint teaches the gestures.** When a game begins (on launch, and after switching mode), call `hint.playGameHint(canUndo:)` on a `StillHintView`. A few seconds in, a soft tint pebble fades in with "A two-finger tap opens the menu.", adding "Shake your device to undo." when the mode supports undo and the person allows it, then fades away. Opening the menu stops it. It is the only thing besides the game that a mode may show, and only for a moment. Use `StillHintView.pinned(to:)` for the bottom of the screen, or place it where it covers nothing being played with.
-- **VoiceOver** keeps multi-finger taps for itself. Give the game's view the same things as accessibility custom actions ("Open menu", and `undo.accessibilityAction` while the mode supports undo), and open the menu on the magic tap (`accessibilityPerformMagicTap`). The menu's row buttons and settings button are also offered as actions on their row. `StillHintView` stays silent while VoiceOver runs.
-
-```swift
-lazy var hint = StillHintView.pinned(to: view)
-lazy var undo = view.addStillUndo { [weak self] in self?.game.undo() }
-
-override func viewDidLoad() {
-    super.viewDidLoad()
-    view.addStillTap(fingers: 2) { [weak self] in self?.showMenu() }
-    // Open in the mode that was selected when the app last closed.
-    let saved = UserDefaults.standard.string(forKey: "mode").flatMap(Mode.init(rawValue:))
-    start(saved ?? .default)
-}
-
-func start(_ mode: Mode) {
-    current = mode
-    UserDefaults.standard.set(mode.rawValue, forKey: "mode") // the selected mode persists
-    undo.isEnabled = mode.supportsUndo
-    hint.playGameHint(canUndo: mode.supportsUndo)
-    // …lay out the mode's game elements, and nothing else.
-}
-
-func showMenu() {
-    var actions: [StillMenu.RowAction] = [.init("New game", symbol: "arrow.clockwise") { [weak self] in self?.game.reset() }]
-    if current.supportsUndo && !StillShakeToUndo.isAvailable {
-        actions.insert(.init("Undo", symbol: "arrow.uturn.backward") { [weak self] in self?.game.undo() }, at: 0)
-    }
-    StillMenu(
-        title: "minibalism",
-        logo: LogoView(pointSize: 24),
-        about: "No points. No leaderboards. No aims.",
-        sections: [
-            .init("Game mode", items: modes.map { mode in
-                .choice(mode.name, detail: mode.summary, isSelected: mode == current,
-                        actions: mode == current ? actions : [],
-                        settings: mode.hasSettings ? { ModeSettingsViewController(mode) } : nil) { [weak self] in
-                    self?.start(mode)
-                }
-            }),
-        ],
-        footer: [StillMenu.version(of: "minibalism"), "A contention product."]
-    ).present(from: self)
-}
-```
-
-SwiftUI apps present the menu from their window's root view controller and add the tap and the shake to its view.
-
-## Asset catalog or code?
-
-Code (the Swift file) is one file to share, diff and review, which suits a series. The asset catalog route (a colour set per role with Any, Dark and High Contrast appearances) is better if you want Interface Builder and SwiftUI previews to see the colours by name, and it gives Increase Contrast variants without code. Either is fine; pick one and do not mix them.
+- Motion: `StillMotion.animate { ... }` (bounce 0; 0.3s crossfade under Reduce Motion).
+- Haptics: `StillHaptics.touch()` on contact, `StillHaptics.snap()` as a dragged piece snaps into place, `StillHaptics.tick()` on control detents. Call `StillHaptics.prepare()` when a drag begins.
+- Depth: a piece being dragged gets the `shadow-lift` look. Nothing at rest casts a shadow.
+- Accessibility: every interactive game piece gets an `accessibilityLabel`; draggable pieces get `.adjustable` where appropriate.

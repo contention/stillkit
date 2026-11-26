@@ -8,44 +8,25 @@ import UIKit
 // actions on its row, each with its settings if it has any, then how to play), and the
 // version and credits at the foot. See docs/uikit.md, step 6.
 
-/// The series menu. Describe it, then call `present(from:)`.
+/// The series menu, built and presented internally by `StillGameHost`.
 ///
-/// ```swift
-/// let menu = StillMenu(
-///     title: "minibalism",
-///     logo: LogoView(pointSize: 24),
-///     about: "No points. No aims. Just a tiny space to bounce, breathe, and be.",
-///     sections: [
-///         .init("Game mode", items: modes.map { mode in
-///             .choice(mode.name, detail: mode.summary, isSelected: mode == current,
-///                     actions: mode == current ? [.init("New game", symbol: "arrow.clockwise") { game.reset() }] : [],
-///                     settings: mode.hasSettings ? { ModeSettingsViewController(mode) } : nil) {
-///                 switchTo(mode)
-///             }
-///         })
-///     ],
-///     footer: [StillMenu.version(of: "minibalism"), "A contention product."]
-/// )
-/// menu.present(from: viewController)
-/// ```
-///
-/// The menu is a snapshot: build it each time it opens, so it shows the app as it is then.
+/// The menu is a snapshot: built each time it opens, so it shows the app as it is then.
 /// Choosing a row closes the menu first and runs the row's action once it has gone, so the
 /// action's effect (a new mode, a cleared board) is seen rather than hidden behind the sheet.
-public struct StillMenu {
+struct StillMenu {
     /// The app's name. VoiceOver reads it as the menu's title; the logo is shown instead.
-    public var title: String
+    var title: String
     /// Shown in the navigation bar in place of the title, about 24pt tall.
-    public var logo: UIView?
+    var logo: UIView?
     /// A line or two about the app, centred above the list, in the series voice.
-    public var about: String?
-    public var sections: [Section]
+    var about: String?
+    var sections: [Section]
     /// Lines centred below the list in footnote type: the version, credits. Markdown links
     /// (`[Coolors](https://coolors.co)`) can be tapped.
-    public var footer: [String]
+    var footer: [String]
 
-    public init(title: String, logo: UIView? = nil, about: String? = nil,
-                sections: [Section] = [], footer: [String] = []) {
+    init(title: String, logo: UIView? = nil, about: String? = nil,
+         sections: [Section] = [], footer: [String] = []) {
         self.title = title
         self.logo = logo
         self.about = about
@@ -54,12 +35,12 @@ public struct StillMenu {
     }
 
     /// A group of rows on one surface, with an optional header above and footer below.
-    public struct Section {
-        public var header: String?
-        public var footer: String?
-        public var items: [Item]
+    struct Section {
+        var header: String?
+        var footer: String?
+        var items: [Item]
 
-        public init(_ header: String? = nil, footer: String? = nil, items: [Item]) {
+        init(_ header: String? = nil, footer: String? = nil, items: [Item]) {
             self.header = header
             self.footer = footer
             self.items = items
@@ -67,68 +48,54 @@ public struct StillMenu {
     }
 
     /// One row.
-    public struct Item {
+    struct Item {
         enum Kind {
             case choice(detail: String?, isSelected: Bool, actions: [RowAction],
                         settings: (@MainActor () -> UIViewController)?)
             case action(role: Role, confirmation: Confirmation?)
             case text
+            case disabled
         }
 
         let title: String
         let kind: Kind
         let handler: (@MainActor () -> Void)?
 
-        /// One of a set to choose between, such as a game mode: its name in rounded type,
-        /// what it is beneath, and a checkmark when it is the current one.
-        ///
-        /// Give the current mode its `actions` ("New game", undo, "Clear the board"). They
-        /// are buttons on its row, before the checkmark; each closes the menu and then acts
-        /// on the mode's game. Tapping the rest of the row still chooses the mode.
-        ///
-        /// Give a mode with its own settings a `settings` closure. The row then shows a
-        /// settings button: tapping the row still chooses the mode, and tapping the button
-        /// pushes the closure's view controller onto the menu, titled with the mode's name
-        /// unless it has a title of its own. The mode is not switched. Build the settings
-        /// screen like any other list (`Still.groupedBackground`, `StillList`), and apply
-        /// changes as they are made: there is no Save.
-        public static func choice(_ title: String, detail: String? = nil, isSelected: Bool,
-                                  actions: [RowAction] = [],
-                                  settings: (@MainActor () -> UIViewController)? = nil,
-                                  action: @escaping @MainActor () -> Void) -> Item {
+        static func choice(_ title: String, detail: String? = nil, isSelected: Bool,
+                           actions: [RowAction] = [],
+                           settings: (@MainActor () -> UIViewController)? = nil,
+                           action: @escaping @MainActor () -> Void) -> Item {
             Item(title: title,
                  kind: .choice(detail: detail, isSelected: isSelected, actions: actions, settings: settings),
                  handler: action)
         }
 
-        /// Something to do, in tint text: "New game", "Clear the board". With a
-        /// `confirmation`, the system asks first, for actions that lose progress.
-        public static func action(_ title: String, role: Role = .normal, confirmation: Confirmation? = nil,
-                                  action: @escaping @MainActor () -> Void) -> Item {
+        static func action(_ title: String, role: Role = .normal, confirmation: Confirmation? = nil,
+                           action: @escaping @MainActor () -> Void) -> Item {
             Item(title: title, kind: .action(role: role, confirmation: confirmation), handler: action)
         }
 
-        /// Text to read, such as how to play. Not selectable.
-        public static func text(_ text: String) -> Item {
+        static func text(_ text: String) -> Item {
             Item(title: text, kind: .text, handler: nil)
+        }
+
+        /// A disabled placeholder row (for example "More Still apps" before it has a destination).
+        static func disabled(_ title: String) -> Item {
+            Item(title: title, kind: .disabled, handler: nil)
         }
     }
 
     /// A button on a `.choice` row: something to do to that mode's game.
-    ///
-    /// Always a symbol, so the row stays quiet; its title is what VoiceOver reads. The series
-    /// gives each action one symbol (docs/brand.md): starting over (a new round, or clearing the
-    /// board) is `arrow.clockwise`, undo is `arrow.uturn.backward`. Never `plus` for a new round.
-    public struct RowAction {
-        public var title: String
+    struct RowAction {
+        var title: String
         /// An SF Symbol name, such as "arrow.uturn.backward" for undo.
-        public var symbol: String
+        var symbol: String
         /// The question asked first, for an action that loses progress.
-        public var confirmation: Confirmation?
+        var confirmation: Confirmation?
         let handler: @MainActor () -> Void
 
-        public init(_ title: String, symbol: String, confirmation: Confirmation? = nil,
-                    action: @escaping @MainActor () -> Void) {
+        init(_ title: String, symbol: String, confirmation: Confirmation? = nil,
+             action: @escaping @MainActor () -> Void) {
             self.title = title
             self.symbol = symbol
             self.confirmation = confirmation
@@ -137,26 +104,23 @@ public struct StillMenu {
     }
 
     /// How an action row is drawn.
-    public enum Role {
+    enum Role {
         /// Tint text.
         case normal
         /// Apple's red, for an action that destroys something kept, such as a saved drawing.
-        /// Starting a new round is not one: give it a `Confirmation` instead.
         case destructive
     }
 
     /// The question asked before an action that loses progress. Shown as a system action sheet.
-    public struct Confirmation {
-        public var title: String
-        public var message: String?
-        public var confirm: String
-        public var cancel: String
-        /// Whether confirming loses something, so the confirm button is Apple's red. Usually
-        /// true: that is why the question is asked.
-        public var isDestructive: Bool
+    struct Confirmation {
+        var title: String
+        var message: String?
+        var confirm: String
+        var cancel: String
+        var isDestructive: Bool
 
-        public init(_ title: String, message: String? = nil, confirm: String, cancel: String = "Cancel",
-                    isDestructive: Bool = true) {
+        init(_ title: String, message: String? = nil, confirm: String,
+             cancel: String = StillSeriesCopy.cancel, isDestructive: Bool = true) {
             self.title = title
             self.message = message
             self.confirm = confirm
@@ -169,7 +133,7 @@ public struct StillMenu {
     /// `presenter` is already presenting something (the menu, say).
     @MainActor
     @discardableResult
-    public func present(from presenter: UIViewController) -> Bool {
+    func present(from presenter: UIViewController) -> Bool {
         guard presenter.presentedViewController == nil else { return false }
         let root = StillMenuViewController(menu: self)
         let navigation = UINavigationController(rootViewController: root)
@@ -185,7 +149,7 @@ public struct StillMenu {
     }
 
     /// "name 1.0 (12)", from the bundle's version and build, for the footer.
-    public static func version(of name: String, bundle: Bundle = .main) -> String {
+    static func version(of name: String, bundle: Bundle = .main) -> String {
         let info = bundle.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
         guard let build = info?["CFBundleVersion"] as? String else { return "\(name) \(version)" }
@@ -318,7 +282,7 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                     }
                 }
                 if let open {
-                    custom.append(UIAccessibilityCustomAction(name: "Settings") { _ in
+                    custom.append(UIAccessibilityCustomAction(name: StillSeriesCopy.settings) { _ in
                         open()
                         return true
                     })
@@ -344,6 +308,16 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                 cell.contentConfiguration = content
                 cell.accessories = []
                 cell.accessibilityTraits = [.staticText]
+
+            case .disabled:
+                var content = UIListContentConfiguration.cell()
+                content.text = item.title
+                content.textProperties.font = .preferredFont(forTextStyle: .body)
+                content.textProperties.color = Still.labelTertiary
+                content.textProperties.adjustsFontForContentSizeCategory = true
+                cell.contentConfiguration = content
+                cell.accessories = []
+                cell.accessibilityTraits = [.button, .notEnabled]
             }
             cell.backgroundConfiguration = StillList.cellBackground()
         }
@@ -609,10 +583,10 @@ final class StillMenuTextView: UICollectionReusableView {
 /// accessibility custom actions ("Open menu", and `StillShakeToUndo.accessibilityAction`), and
 /// the magic tap (a two-finger double tap) for opening the menu.
 @MainActor
-public final class StillTapGesture: UITapGestureRecognizer, UIGestureRecognizerDelegate {
+final class StillTapGesture: UITapGestureRecognizer, UIGestureRecognizerDelegate {
     private let action: @MainActor () -> Void
 
-    public init(fingers: Int, action: @escaping @MainActor () -> Void) {
+    init(fingers: Int, action: @escaping @MainActor () -> Void) {
         self.action = action
         super.init(target: nil, action: nil)
         addTarget(self, action: #selector(recognized))
@@ -623,14 +597,14 @@ public final class StillTapGesture: UITapGestureRecognizer, UIGestureRecognizerD
 
     @objc private func recognized() { action() }
 
-    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
-                                  shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         true
     }
 }
 
-public extension UIView {
-    /// Calls `action` when `fingers` fingers tap this view. See `StillTapGesture`.
+extension UIView {
+    /// Calls `action` when `fingers` fingers tap this view. Internal to `StillGameHost`.
     @MainActor
     @discardableResult
     func addStillTap(fingers: Int, action: @escaping @MainActor () -> Void) -> StillTapGesture {
@@ -642,30 +616,22 @@ public extension UIView {
 
 // MARK: - Hints
 
-/// The quiet pebble that teaches the series gestures. It fades in after a pause, shows its
-/// message, and fades away. It never takes touches and VoiceOver skips it (VoiceOver users
-/// get the gestures as actions instead). It is the one thing besides the game that a game
-/// screen may show, and only for a moment.
-///
-/// When a game begins (on launch, and after switching mode), call `playGameHint(canUndo:)`:
-/// "A two-finger tap opens the menu.", with "Shake your device to undo." added when the mode
-/// supports undo. Opening the menu stops it. Place the view where it covers nothing being
-/// played with, or use `pinned(to:)` for the bottom of the screen.
+/// The quiet pebble that teaches the series gestures. Internal to `StillGameHost`.
 @MainActor
-public final class StillHintView: UIView {
+final class StillHintView: UIView {
     /// How long after `play(_:)` the first message fades in.
-    public static let delay: TimeInterval = 3
+    static let delay: TimeInterval = 3
     /// How long each message stays.
-    public static let duration: TimeInterval = 3
+    static let duration: TimeInterval = 3
     /// How long the game hint stays when it also teaches undo: two sentences take longer to read.
-    public static let longDuration: TimeInterval = 4.5
+    static let longDuration: TimeInterval = 4.5
     /// The pause between messages.
-    public static let gap: TimeInterval = 0.4
+    static let gap: TimeInterval = 0.4
 
     private let label = UILabel()
     private var sequence: Task<Void, Never>?
 
-    public override init(frame: CGRect) {
+    override init(frame: CGRect) {
         super.init(frame: frame)
         // A moment worth noticing, so the soft tint pebble (docs/brand.md, Shape).
         backgroundColor = Still.tintSoft
@@ -696,32 +662,28 @@ public final class StillHintView: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
 
-    public override func layoutSubviews() {
+    override func layoutSubviews() {
         super.layoutSubviews()
         // A capsule while it is one line; continuous corners if large text wraps it.
         stillCorners(min(bounds.height / 2, StillRadius.lg))
     }
 
-    /// The line that teaches the series gestures when a game begins: "A two-finger tap opens
-    /// the menu.", plus "Shake your device to undo." when `canUndo` is true and the person
-    /// allows shake to undo.
-    public static func gameMessage(canUndo: Bool) -> String {
-        let menu = "A two-finger tap opens the menu."
+    /// The line that teaches the series gestures when a game begins.
+    static func gameMessage(canUndo: Bool) -> String {
+        let menu = StillSeriesCopy.hintMenu
         guard canUndo, StillShakeToUndo.isAvailable else { return menu }
-        return menu + " Shake your device to undo."
+        return menu + " " + StillSeriesCopy.hintUndo
     }
 
-    /// Teaches the series gestures as a game begins: after a pause, `gameMessage(canUndo:)`
-    /// fades in, stays, and fades away. Call it on launch and after switching mode, with
-    /// whether the new mode supports undo. Replaces anything already playing.
-    public func playGameHint(canUndo: Bool) {
+    /// Teaches the series gestures as a game begins.
+    func playGameHint(canUndo: Bool) {
         let teachesUndo = canUndo && StillShakeToUndo.isAvailable
         play([Self.gameMessage(canUndo: canUndo)], holding: teachesUndo ? Self.longDuration : Self.duration)
     }
 
     /// Shows each message in turn, after a pause. Replaces any sequence already playing.
     /// Does nothing while VoiceOver is running.
-    public func play(_ messages: [String]) {
+    func play(_ messages: [String]) {
         play(messages, holding: Self.duration)
     }
 
@@ -750,9 +712,8 @@ public final class StillHintView: UIView {
         stop()
     }
 
-    /// Ends the sequence: call when the gesture is used, or the screen changes. Opening the
-    /// menu calls it for you.
-    public func stop(animated: Bool = true) {
+    /// Ends the sequence: call when the gesture is used, or the screen changes.
+    func stop(animated: Bool = true) {
         sequence?.cancel()
         sequence = nil
         if animated {
@@ -763,7 +724,7 @@ public final class StillHintView: UIView {
     }
 
     /// A hint view at the bottom centre of `view`, above the safe area, as a toy shows it.
-    public static func pinned(to view: UIView) -> StillHintView {
+    static func pinned(to view: UIView) -> StillHintView {
         let hint = StillHintView()
         hint.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hint)

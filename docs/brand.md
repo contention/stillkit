@@ -97,6 +97,7 @@ Everything else lives in one menu, opened the same way in every app: **a two-fin
 
 - **Undo is a shake.** A mode that can take a move back undoes on a shake of the device, never with a button. If the person has turned Shake to Undo off, the menu offers "Undo" instead.
 - **A mode's settings are in the menu**, behind the settings button on its row. They apply as they change; there is no Save.
+- **Nothing is forgotten.** Each mode's settings, and the mode last played, carry over between launches, so the app opens as the person left it. They are kept on the device only: never synced, never sent anywhere.
 - **The hint teaches the gestures.** A few seconds after a game begins, a quiet pebble fades in, says "A two-finger tap opens the menu.", adds "Shake your device to undo." when the mode supports undo, and fades away.
 - **VoiceOver users get the same things as actions**: open menu, undo, and each mode's settings.
 

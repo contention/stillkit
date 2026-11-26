@@ -84,7 +84,8 @@ An 8-point rhythm with a 4-point half step: `space-1` 4, `space-2` 8, `space-3` 
 ## Iconography
 
 - SF Symbols only in UI, at the weight of the text beside them, rendering mode `.hierarchical`, coloured by `tint` or `label-secondary`. No multicolour symbols.
-- Use a word instead of a symbol when the symbol would mislead. `plus` means making something you keep, so it is wrong for a new round of a game; circular arrows read as undo. A new round is "New game", in words.
+- Use a word instead of a symbol when the symbol would mislead. `plus` means making something you keep, so it is wrong for a new round of a game; counterclockwise arrows read as undo. In a list or a bar, a new round is "New game", in words.
+- The one place that is always symbols is a mode's row in the series menu: words there crowd the mode's name and look like a second list. So each action has one symbol across the series, chosen not to mislead: starting over, whether a new round or clearing the board, is `arrow.clockwise` (turning forward, so never undo), and undo is `arrow.uturn.backward`. A mode offers one way to start over, so the symbol never means two things on one row. A new action gets its symbol added here before it is used.
 - Actions live in the system navigation bar or toolbar, drawn as the system draws them, not in custom floating buttons. A full-screen game or toy, which has no bars and shows nothing but the game, puts them in the series menu instead (below).
 - App icons share one template: `night` ground, a single simple glyph in `mist`, at most one accent in `sage` or `moss`. Provide the dark and tinted variants iOS asks for; the dark variant uses `night-900`.
 - No emoji in UI.

@@ -18,7 +18,7 @@ import UIKit
 ///     sections: [
 ///         .init("Game mode", items: modes.map { mode in
 ///             .choice(mode.name, detail: mode.summary, isSelected: mode == current,
-///                     actions: mode == current ? [.init("New game") { game.reset() }] : [],
+///                     actions: mode == current ? [.init("New game", symbol: "arrow.clockwise") { game.reset() }] : [],
 ///                     settings: mode.hasSettings ? { ModeSettingsViewController(mode) } : nil) {
 ///                 switchTo(mode)
 ///             }
@@ -116,18 +116,18 @@ public struct StillMenu {
 
     /// A button on a `.choice` row: something to do to that mode's game.
     ///
-    /// With a `symbol`, it is drawn as that SF Symbol, and its title is what VoiceOver reads.
-    /// Without one, it is drawn as its title in tint text. Use a word when a symbol would
-    /// mislead (docs/brand.md): a new round is "New game", never a plus or circular arrows.
+    /// Always a symbol, so the row stays quiet; its title is what VoiceOver reads. The series
+    /// gives each action one symbol (docs/brand.md): starting over (a new round, or clearing the
+    /// board) is `arrow.clockwise`, undo is `arrow.uturn.backward`. Never `plus` for a new round.
     public struct RowAction {
         public var title: String
         /// An SF Symbol name, such as "arrow.uturn.backward" for undo.
-        public var symbol: String?
+        public var symbol: String
         /// The question asked first, for an action that loses progress.
         public var confirmation: Confirmation?
         let handler: @MainActor () -> Void
 
-        public init(_ title: String, symbol: String? = nil, confirmation: Confirmation? = nil,
+        public init(_ title: String, symbol: String, confirmation: Confirmation? = nil,
                     action: @escaping @MainActor () -> Void) {
             self.title = title
             self.symbol = symbol
@@ -485,20 +485,9 @@ final class StillMenuChoiceAccessory: UIView {
         // Drawn in the inherited tint: they are things to tap.
         actionButtons = actions.map { action in
             var configuration = UIButton.Configuration.plain()
-            if let symbol = action.symbol {
-                configuration.image = UIImage(systemName: symbol)
-                configuration.preferredSymbolConfigurationForImage = symbols
-                configuration.contentInsets = .zero
-            } else {
-                configuration.title = action.title
-                configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-                    var outgoing = incoming
-                    outgoing.font = font
-                    return outgoing
-                }
-                configuration.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: StillSpace.s2,
-                                                                      bottom: 0, trailing: StillSpace.s2)
-            }
+            configuration.image = UIImage(systemName: action.symbol)
+            configuration.preferredSymbolConfigurationForImage = symbols
+            configuration.contentInsets = .zero
             let actionButton = UIButton(configuration: configuration)
             actionButton.accessibilityLabel = action.title
             actionButton.addAction(UIAction { [weak actionButton] _ in
@@ -538,9 +527,9 @@ final class StillMenuChoiceAccessory: UIView {
         let height = max(Self.buttonSide, checkSize.height)
         var x: CGFloat = 0
         for actionButton in actionButtons {
-            let width = max(Self.buttonSide, actionButton.intrinsicContentSize.width)
-            actionButton.frame = CGRect(x: x, y: (height - Self.buttonSide) / 2, width: width, height: Self.buttonSide)
-            x += width
+            actionButton.frame = CGRect(x: x, y: (height - Self.buttonSide) / 2,
+                                        width: Self.buttonSide, height: Self.buttonSide)
+            x += Self.buttonSide
         }
         if !actionButtons.isEmpty { x += StillSpace.s1 }
         checkmark.frame = CGRect(x: x, y: (height - checkSize.height) / 2,

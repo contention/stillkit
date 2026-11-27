@@ -1,0 +1,7 @@
+// Shared build settings for StillShowcase.
+// Copy Local.xcconfig.example to Local.xcconfig and set DEVELOPMENT_TEAM to install on a device.
+
+PRODUCT_BUNDLE_IDENTIFIER = com.contention.stillshowcase
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

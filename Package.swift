@@ -5,11 +5,19 @@ import PackageDescription
 
 let package = Package(
     name: "StillKit",
+    defaultLocalization: "en",
     platforms: [.iOS(.v17)],
     products: [
         .library(name: "StillKit", targets: ["StillKit"])
     ],
     targets: [
-        .target(name: "StillKit")
+        .target(
+            name: "StillKit",
+            resources: [.process("Resources")]
+        ),
+        .testTarget(
+            name: "StillKitTests",
+            dependencies: ["StillKit"]
+        ),
     ]
 )

@@ -1,0 +1,346 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000010000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000001 /* AppDelegate.swift */; };
+		A10000020000000000000001 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000020000000000000001 /* SceneDelegate.swift */; };
+		A10000030000000000000001 /* CatalogueViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000030000000000000001 /* CatalogueViewController.swift */; };
+		A10000180000000000000001 /* ShowcaseHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000200000000000000001 /* ShowcaseHelpers.swift */; };
+		A10000040000000000000001 /* ColoursViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000040000000000000001 /* ColoursViewController.swift */; };
+		A10000050000000000000001 /* TypographyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000050000000000000001 /* TypographyViewController.swift */; };
+		A10000060000000000000001 /* ButtonsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000060000000000000001 /* ButtonsViewController.swift */; };
+		A10000070000000000000001 /* ShapeSpaceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000070000000000000001 /* ShapeSpaceViewController.swift */; };
+		A10000080000000000000001 /* ListsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000080000000000000001 /* ListsViewController.swift */; };
+		A10000090000000000000001 /* MotionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000090000000000000001 /* MotionViewController.swift */; };
+		A10000100000000000000001 /* HapticsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000100000000000000001 /* HapticsViewController.swift */; };
+		A10000110000000000000001 /* StillSampleGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000110000000000000001 /* StillSampleGame.swift */; };
+		A10000120000000000000001 /* StillSampleSplash.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000120000000000000001 /* StillSampleSplash.swift */; };
+		A10000130000000000000001 /* PlainMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000130000000000000001 /* PlainMode.swift */; };
+		A10000140000000000000001 /* UndoMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000140000000000000001 /* UndoMode.swift */; };
+		A10000150000000000000001 /* SettingsMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000150000000000000001 /* SettingsMode.swift */; };
+		A10000160000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000160000000000000001 /* Assets.xcassets */; };
+		A10000170000000000000001 /* StillKit in Frameworks */ = {isa = PBXBuildFile; productRef = A70000010000000000000001 /* StillKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A20000010000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A20000020000000000000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		A20000030000000000000001 /* CatalogueViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueViewController.swift; sourceTree = "<group>"; };
+		A20000200000000000000001 /* ShowcaseHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowcaseHelpers.swift; sourceTree = "<group>"; };
+		A20000040000000000000001 /* ColoursViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoursViewController.swift; sourceTree = "<group>"; };
+		A20000050000000000000001 /* TypographyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypographyViewController.swift; sourceTree = "<group>"; };
+		A20000060000000000000001 /* ButtonsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonsViewController.swift; sourceTree = "<group>"; };
+		A20000070000000000000001 /* ShapeSpaceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShapeSpaceViewController.swift; sourceTree = "<group>"; };
+		A20000080000000000000001 /* ListsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsViewController.swift; sourceTree = "<group>"; };
+		A20000090000000000000001 /* MotionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionViewController.swift; sourceTree = "<group>"; };
+		A20000100000000000000001 /* HapticsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticsViewController.swift; sourceTree = "<group>"; };
+		A20000110000000000000001 /* StillSampleGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StillSampleGame.swift; path = ../templates/game/Game/StillSampleGame.swift; sourceTree = SOURCE_ROOT; };
+		A20000120000000000000001 /* StillSampleSplash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StillSampleSplash.swift; path = ../templates/game/Game/StillSampleSplash.swift; sourceTree = SOURCE_ROOT; };
+		A20000130000000000000001 /* PlainMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlainMode.swift; path = ../templates/game/Game/Modes/PlainMode.swift; sourceTree = SOURCE_ROOT; };
+		A20000140000000000000001 /* UndoMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UndoMode.swift; path = ../templates/game/Game/Modes/UndoMode.swift; sourceTree = SOURCE_ROOT; };
+		A20000150000000000000001 /* SettingsMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SettingsMode.swift; path = ../templates/game/Game/Modes/SettingsMode.swift; sourceTree = SOURCE_ROOT; };
+		A20000160000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A20000170000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000180000000000000001 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		A20000190000000000000001 /* StillShowcase.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StillShowcase.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000170000000000000001 /* StillKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A40000010000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A40000020000000000000001 /* StillShowcase */,
+				A40000040000000000000001 /* SampleGame (from templates/game) */,
+				A40000050000000000000001 /* Config */,
+				A40000060000000000000001 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A40000020000000000000001 /* StillShowcase */ = {
+			isa = PBXGroup;
+			children = (
+				A20000010000000000000001 /* AppDelegate.swift */,
+				A20000020000000000000001 /* SceneDelegate.swift */,
+				A20000030000000000000001 /* CatalogueViewController.swift */,
+				A20000200000000000000001 /* ShowcaseHelpers.swift */,
+				A40000030000000000000001 /* Screens */,
+				A20000160000000000000001 /* Assets.xcassets */,
+				A20000170000000000000001 /* Info.plist */,
+			);
+			path = StillShowcase;
+			sourceTree = "<group>";
+		};
+		A40000030000000000000001 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				A20000040000000000000001 /* ColoursViewController.swift */,
+				A20000050000000000000001 /* TypographyViewController.swift */,
+				A20000060000000000000001 /* ButtonsViewController.swift */,
+				A20000070000000000000001 /* ShapeSpaceViewController.swift */,
+				A20000080000000000000001 /* ListsViewController.swift */,
+				A20000090000000000000001 /* MotionViewController.swift */,
+				A20000100000000000000001 /* HapticsViewController.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
+		A40000040000000000000001 /* SampleGame (from templates/game) */ = {
+			isa = PBXGroup;
+			children = (
+				A20000110000000000000001 /* StillSampleGame.swift */,
+				A20000120000000000000001 /* StillSampleSplash.swift */,
+				A20000130000000000000001 /* PlainMode.swift */,
+				A20000140000000000000001 /* UndoMode.swift */,
+				A20000150000000000000001 /* SettingsMode.swift */,
+			);
+			name = "SampleGame (from templates/game)";
+			sourceTree = "<group>";
+		};
+		A40000050000000000000001 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				A20000180000000000000001 /* Base.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		A40000060000000000000001 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000190000000000000001 /* StillShowcase.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A50000010000000000000001 /* StillShowcase */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A90000020000000000000001 /* Build configuration list for PBXNativeTarget "StillShowcase" */;
+			buildPhases = (
+				A50000020000000000000001 /* Sources */,
+				A30000010000000000000001 /* Frameworks */,
+				A50000030000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StillShowcase;
+			packageProductDependencies = (
+				A70000010000000000000001 /* StillKit */,
+			);
+			productName = StillShowcase;
+			productReference = A20000190000000000000001 /* StillShowcase.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A60000010000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = A90000010000000000000001 /* Build configuration list for PBXProject "StillShowcase" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A40000010000000000000001;
+			packageReferences = (
+				A70000020000000000000001 /* XCLocalSwiftPackageReference ".." */,
+			);
+			productRefGroup = A40000060000000000000001 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000010000000000000001 /* StillShowcase */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A50000030000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000160000000000000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A50000020000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000010000000000000001 /* AppDelegate.swift in Sources */,
+				A10000020000000000000001 /* SceneDelegate.swift in Sources */,
+				A10000030000000000000001 /* CatalogueViewController.swift in Sources */,
+				A10000180000000000000001 /* ShowcaseHelpers.swift in Sources */,
+				A10000040000000000000001 /* ColoursViewController.swift in Sources */,
+				A10000050000000000000001 /* TypographyViewController.swift in Sources */,
+				A10000060000000000000001 /* ButtonsViewController.swift in Sources */,
+				A10000070000000000000001 /* ShapeSpaceViewController.swift in Sources */,
+				A10000080000000000000001 /* ListsViewController.swift in Sources */,
+				A10000090000000000000001 /* MotionViewController.swift in Sources */,
+				A10000100000000000000001 /* HapticsViewController.swift in Sources */,
+				A10000110000000000000001 /* StillSampleGame.swift in Sources */,
+				A10000120000000000000001 /* StillSampleSplash.swift in Sources */,
+				A10000130000000000000001 /* PlainMode.swift in Sources */,
+				A10000140000000000000001 /* UndoMode.swift in Sources */,
+				A10000150000000000000001 /* SettingsMode.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A80000010000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A80000020000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A80000030000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000180000000000000001 /* Base.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StillShowcase/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.6.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A80000040000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000180000000000000001 /* Base.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StillShowcase/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.6.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A90000010000000000000001 /* Build configuration list for PBXProject "StillShowcase" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000010000000000000001 /* Debug */,
+				A80000020000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A90000020000000000000001 /* Build configuration list for PBXNativeTarget "StillShowcase" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000030000000000000001 /* Debug */,
+				A80000040000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A70000020000000000000001 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A70000010000000000000001 /* StillKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70000020000000000000001 /* XCLocalSwiftPackageReference ".." */;
+			productName = StillKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A60000010000000000000001 /* Project object */;
+}

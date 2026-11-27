@@ -70,14 +70,14 @@ public enum Still {
 // MARK: - 1. Type
 
 public enum StillFont {
+    private static let baseTraits = UITraitCollection(preferredContentSizeCategory: .large)
+
     /// A Dynamic Type text style in SF Pro Rounded. Use for display text and numbers.
     public static func rounded(_ style: UIFont.TextStyle,
                                weight: UIFont.Weight = .semibold) -> UIFont {
         let size = defaultPointSize(for: style)
         let system = UIFont.systemFont(ofSize: size, weight: weight)
-        let font = system.fontDescriptor.withDesign(.rounded)
-            .map { UIFont(descriptor: $0, size: size) } ?? system
-        return UIFontMetrics(forTextStyle: style).scaledFont(for: font)
+        return scaledRoundedFont(from: system, size: size, textStyle: style)
     }
 
     /// Game counters and timers: rounded, monospaced digits.
@@ -86,9 +86,7 @@ public enum StillFont {
     /// for a large number you look at rather than glance at, such as a clock face.
     public static func numeral(size: CGFloat = 64, weight: UIFont.Weight = .medium) -> UIFont {
         let system = UIFont.monospacedDigitSystemFont(ofSize: size, weight: weight)
-        let font = system.fontDescriptor.withDesign(.rounded)
-            .map { UIFont(descriptor: $0, size: size) } ?? system
-        return UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: font)
+        return scaledRoundedFont(from: system, size: size, textStyle: .largeTitle)
     }
 
     /// Plain SF Pro text styles: just use UIFont.preferredFont(forTextStyle:).
@@ -96,10 +94,16 @@ public enum StillFont {
         UIFont.preferredFont(forTextStyle: style)
     }
 
+    private static func scaledRoundedFont(from system: UIFont, size: CGFloat,
+                                          textStyle: UIFont.TextStyle) -> UIFont {
+        let font = system.fontDescriptor.withDesign(.rounded)
+            .map { UIFont(descriptor: $0, size: size) } ?? system
+        return UIFontMetrics(forTextStyle: textStyle).scaledFont(for: font)
+    }
+
     private static func defaultPointSize(for style: UIFont.TextStyle) -> CGFloat {
-        let traits = UITraitCollection(preferredContentSizeCategory: .large)
-        return UIFontDescriptor.preferredFontDescriptor(withTextStyle: style,
-                                                        compatibleWith: traits).pointSize
+        UIFontDescriptor.preferredFontDescriptor(withTextStyle: style,
+                                                 compatibleWith: baseTraits).pointSize
     }
 }
 
@@ -291,7 +295,7 @@ public enum StillHaptics {
     }
 
     /// Contact: a piece lands, a toggle settles.
-    @MainActor public static func touch(_ intensity: CGFloat = 0.6) {
+    @MainActor public static func touch(_ intensity: CGFloat = 0.85) {
         soft.impactOccurred(intensity: intensity)
         soft.prepare()
     }

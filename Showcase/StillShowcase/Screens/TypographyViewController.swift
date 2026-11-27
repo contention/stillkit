@@ -31,12 +31,8 @@ final class TypographyViewController: UIViewController, UICollectionViewDataSour
         config.headerMode = .supplementary
         let layout = UICollectionViewCompositionalLayout.list(using: config)
 
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-        collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        collectionView.backgroundColor = Still.groupedBackground
-        collectionView.allowsSelection = false
-        collectionView.dataSource = self
-        view.addSubview(collectionView)
+        collectionView = ShowcaseUI.installGroupedCollectionView(in: view, layout: layout,
+                                                                 dataSource: self, allowsSelection: false)
         registerViews()
 
         registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (vc: TypographyViewController, _) in

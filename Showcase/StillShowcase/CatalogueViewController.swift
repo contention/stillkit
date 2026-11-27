@@ -66,12 +66,8 @@ final class CatalogueViewController: UIViewController, UICollectionViewDataSourc
             return .list(using: config, layoutEnvironment: environment)
         }
 
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-        collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        collectionView.backgroundColor = Still.groupedBackground
-        collectionView.dataSource = self
-        collectionView.delegate = self
-        view.addSubview(collectionView)
+        collectionView = ShowcaseUI.installGroupedCollectionView(in: view, layout: layout,
+                                                                 dataSource: self, delegate: self)
         registerViews()
     }
 

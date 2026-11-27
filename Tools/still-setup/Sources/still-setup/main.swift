@@ -95,7 +95,6 @@ do {
 }
 
 func runSetup(_ options: SetupOptions) throws {
-    let fm = FileManager.default
     let projPath = Path(options.projectPath).absolute()
     guard projPath.exists, projPath.extension == "xcodeproj" else {
         throw SetupError("Not a valid .xcodeproj path: \(projPath.string)")
@@ -181,8 +180,6 @@ func runSetup(_ options: SetupOptions) throws {
         target: target,
         pbxproj: pbxproj,
         project: project,
-        usesSynchronizedFolder: usesSynchronizedFolder,
-        appSourceDir: appSourceDir,
         projectDir: projectDir,
         templateConfigDir: templateGameDir + "Config"
     )
@@ -215,8 +212,6 @@ func runSetup(_ options: SetupOptions) throws {
         }
         print("Build succeeded.")
     }
-
-    _ = fm
 }
 
 // MARK: - Step helpers
@@ -256,26 +251,19 @@ func sanitizeSwiftIdentifier(_ name: String) -> String {
 }
 
 func verifyDeploymentTarget(target: PBXNativeTarget, project: PBXProject) throws {
-    let targetConfigs = target.buildConfigurationList?.buildConfigurations ?? []
-    let projectConfigs = project.buildConfigurationList?.buildConfigurations ?? []
-
-    var versions: [Double] = []
-    for config in targetConfigs {
-        if let raw = config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] as? String, let val = Double(raw) {
-            versions.append(val)
-        } else if let raw = config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] as? Double {
-            versions.append(raw)
-        }
-    }
-    if versions.isEmpty {
-        for config in projectConfigs {
-            if let raw = config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] as? String, let val = Double(raw) {
-                versions.append(val)
-            } else if let raw = config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] as? Double {
-                versions.append(raw)
+    func deploymentTargets(in configs: [XCBuildConfiguration]) -> [Double] {
+        configs.compactMap { config in
+            if let raw = config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] as? String {
+                return Double(raw)
             }
+            return config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] as? Double
         }
     }
+
+    let targetVersions = deploymentTargets(in: target.buildConfigurationList?.buildConfigurations ?? [])
+    let versions = targetVersions.isEmpty
+        ? deploymentTargets(in: project.buildConfigurationList?.buildConfigurations ?? [])
+        : targetVersions
 
     guard let minimum = versions.min() else {
         throw SetupError("IPHONEOS_DEPLOYMENT_TARGET is not set. StillKit requires iOS 17.0 or later.")
@@ -398,8 +386,7 @@ func copyTemplateFiles(
             .replacingOccurrences(of: "\"StillSample\"", with: "\"\(appName)\"")
     }
 
-    // Copy Game/ sources (skip in --files-only if the app already has game files? No, in --files-only
-    // we still copy the template files unless a file with that exact name already exists, or copy SceneDelegate/assets/CLAUDE.md).
+    // Copy Game/ sources (under --files-only, preserve any existing files with the same name).
     let gameDir = appSourceDir + "Game"
     let modesDir = gameDir + "Modes"
     try fm.createDirectory(atPath: modesDir.string, withIntermediateDirectories: true)
@@ -600,8 +587,6 @@ func configureLaunchScreenAndSceneDelegate(
     target: PBXNativeTarget,
     pbxproj: PBXProj,
     project: PBXProject,
-    usesSynchronizedFolder: Bool,
-    appSourceDir: Path,
     projectDir: Path,
     templateConfigDir: Path
 ) throws {

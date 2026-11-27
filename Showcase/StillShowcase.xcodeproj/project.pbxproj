@@ -10,6 +10,7 @@
 		A10000010000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000001 /* AppDelegate.swift */; };
 		A10000020000000000000001 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000020000000000000001 /* SceneDelegate.swift */; };
 		A10000030000000000000001 /* CatalogueViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000030000000000000001 /* CatalogueViewController.swift */; };
+		A10000180000000000000001 /* ShowcaseHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000200000000000000001 /* ShowcaseHelpers.swift */; };
 		A10000040000000000000001 /* ColoursViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000040000000000000001 /* ColoursViewController.swift */; };
 		A10000050000000000000001 /* TypographyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000050000000000000001 /* TypographyViewController.swift */; };
 		A10000060000000000000001 /* ButtonsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000060000000000000001 /* ButtonsViewController.swift */; };
@@ -30,6 +31,7 @@
 		A20000010000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A20000020000000000000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		A20000030000000000000001 /* CatalogueViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueViewController.swift; sourceTree = "<group>"; };
+		A20000200000000000000001 /* ShowcaseHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowcaseHelpers.swift; sourceTree = "<group>"; };
 		A20000040000000000000001 /* ColoursViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoursViewController.swift; sourceTree = "<group>"; };
 		A20000050000000000000001 /* TypographyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypographyViewController.swift; sourceTree = "<group>"; };
 		A20000060000000000000001 /* ButtonsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonsViewController.swift; sourceTree = "<group>"; };
@@ -76,6 +78,7 @@
 				A20000010000000000000001 /* AppDelegate.swift */,
 				A20000020000000000000001 /* SceneDelegate.swift */,
 				A20000030000000000000001 /* CatalogueViewController.swift */,
+				A20000200000000000000001 /* ShowcaseHelpers.swift */,
 				A40000030000000000000001 /* Screens */,
 				A20000160000000000000001 /* Assets.xcassets */,
 				A20000170000000000000001 /* Info.plist */,
@@ -198,6 +201,7 @@
 				A10000010000000000000001 /* AppDelegate.swift in Sources */,
 				A10000020000000000000001 /* SceneDelegate.swift in Sources */,
 				A10000030000000000000001 /* CatalogueViewController.swift in Sources */,
+				A10000180000000000000001 /* ShowcaseHelpers.swift in Sources */,
 				A10000040000000000000001 /* ColoursViewController.swift in Sources */,
 				A10000050000000000000001 /* TypographyViewController.swift in Sources */,
 				A10000060000000000000001 /* ButtonsViewController.swift in Sources */,

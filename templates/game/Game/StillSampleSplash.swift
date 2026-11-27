@@ -7,39 +7,16 @@ enum StillSampleSplash {
     /// Creates a calm ring containing a solid pebble. The pebble carries over into the
     /// restored game mode while the ring and app name fade away.
     static func make() -> StillSplash {
-        let container = UIView()
-        container.backgroundColor = .clear
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        let ring = StillRingView()
-        ring.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(ring)
-
-        let pebble = StillPebbleView(color: Still.pieceStrong)
-        pebble.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(pebble)
-
-        NSLayoutConstraint.activate([
-            container.widthAnchor.constraint(equalToConstant: 88),
-            container.heightAnchor.constraint(equalToConstant: 88),
-            ring.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            ring.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            ring.topAnchor.constraint(equalTo: container.topAnchor),
-            ring.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            pebble.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            pebble.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            pebble.widthAnchor.constraint(equalToConstant: 36),
-            pebble.heightAnchor.constraint(equalToConstant: 36),
-        ])
-
-        return StillSplash(logo: container, showsName: true, carriedView: pebble)
+        let logo = StillSampleLogoView(size: 88)
+        return StillSplash(logo: logo, showsName: true, carriedView: logo.pebble)
     }
 }
 
-/// Small version of the app mark for the series menu's navigation bar.
+/// App mark used on both the splash (88pt) and the series menu's navigation bar (24pt).
 @MainActor
 final class StillSampleLogoView: UIView {
     private let markSize: CGFloat
+    let pebble = StillPebbleView(color: Still.pieceStrong)
 
     init(size: CGFloat = 24) {
         self.markSize = size
@@ -52,20 +29,21 @@ final class StillSampleLogoView: UIView {
         ring.translatesAutoresizingMaskIntoConstraints = false
         addSubview(ring)
 
-        let dot = StillPebbleView(color: Still.pieceStrong)
-        dot.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(dot)
+        pebble.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(pebble)
 
-        let dotSize = size * 0.42
+        let dotSize = (size * 0.41).rounded()
         NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: size),
+            heightAnchor.constraint(equalToConstant: size),
             ring.leadingAnchor.constraint(equalTo: leadingAnchor),
             ring.trailingAnchor.constraint(equalTo: trailingAnchor),
             ring.topAnchor.constraint(equalTo: topAnchor),
             ring.bottomAnchor.constraint(equalTo: bottomAnchor),
-            dot.centerXAnchor.constraint(equalTo: centerXAnchor),
-            dot.centerYAnchor.constraint(equalTo: centerYAnchor),
-            dot.widthAnchor.constraint(equalToConstant: dotSize),
-            dot.heightAnchor.constraint(equalToConstant: dotSize),
+            pebble.centerXAnchor.constraint(equalTo: centerXAnchor),
+            pebble.centerYAnchor.constraint(equalTo: centerYAnchor),
+            pebble.widthAnchor.constraint(equalToConstant: dotSize),
+            pebble.heightAnchor.constraint(equalToConstant: dotSize),
         ])
     }
 

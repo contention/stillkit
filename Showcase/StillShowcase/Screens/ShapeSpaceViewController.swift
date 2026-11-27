@@ -9,18 +9,10 @@ final class ShapeSpaceViewController: UIViewController {
         title = "Shape & spacing"
         view.backgroundColor = Still.groupedBackground
 
-        let scrollView = UIScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = StillSpace.s6
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(stack)
+        let stack = ShowcaseUI.installScrollableStack(in: view, spacing: StillSpace.s6, topPadding: StillSpace.s5)
 
         // Radii
-        stack.addArrangedSubview(makeHeading("Continuous corners (StillRadius)"))
+        stack.addArrangedSubview(ShowcaseUI.makeHeading("Continuous corners (StillRadius)"))
         let radii: [(String, CGFloat)] = [
             ("sm (8pt)", StillRadius.sm),
             ("md (12pt)", StillRadius.md),
@@ -49,7 +41,7 @@ final class ShapeSpaceViewController: UIViewController {
         }
 
         // Counter pebbles
-        stack.addArrangedSubview(makeHeading("Counter pebbles"))
+        stack.addArrangedSubview(ShowcaseUI.makeHeading("Counter pebbles"))
         let pebbleRow = UIStackView()
         pebbleRow.axis = .vertical
         pebbleRow.spacing = StillSpace.s3
@@ -68,7 +60,7 @@ final class ShapeSpaceViewController: UIViewController {
         stack.addArrangedSubview(pebbleRow)
 
         // Spacing scale
-        stack.addArrangedSubview(makeHeading("Spacing rhythm (StillSpace)"))
+        stack.addArrangedSubview(ShowcaseUI.makeHeading("Spacing rhythm (StillSpace)"))
         let spaces: [(String, CGFloat)] = [
             ("s1", StillSpace.s1),
             ("s2", StillSpace.s2),
@@ -97,30 +89,6 @@ final class ShapeSpaceViewController: UIViewController {
             spaceStack.addArrangedSubview(makeSpaceRow(name: name, value: value))
         }
         stack.addArrangedSubview(spaceCard)
-
-        let guide = scrollView.contentLayoutGuide
-        let readable = view.readableContentGuide
-        NSLayoutConstraint.activate([
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            stack.topAnchor.constraint(equalTo: guide.topAnchor, constant: StillSpace.s5),
-            stack.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -StillSpace.s6),
-            stack.leadingAnchor.constraint(equalTo: readable.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: readable.trailingAnchor),
-        ])
-    }
-
-    private func makeHeading(_ text: String) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = StillFont.rounded(.title3)
-        label.textColor = Still.label
-        label.numberOfLines = 0
-        label.adjustsFontForContentSizeCategory = true
-        return label
     }
 
     private func makeCounterPebble(label title: String, value: String, ground: UIColor,

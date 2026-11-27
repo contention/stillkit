@@ -161,4 +161,85 @@ final class StillKitTests: XCTestCase {
         XCTAssertEqual(styleViolations.count, 1)
         XCTAssertTrue(styleViolations[0].contains("overrideUserInterfaceStyle"))
     }
+
+    // MARK: - Slider snapping and formatting
+
+    func testSliderSnappingAndFormatting() {
+        let stepped = StillSetting.slider("Balls", key: "balls", range: 2...10, step: 2, default: 4)
+        XCTAssertEqual(stepped.snappedSliderValue(3.1), 4, accuracy: 1e-9)
+        XCTAssertEqual(stepped.snappedSliderValue(15), 10, accuracy: 1e-9)
+        XCTAssertEqual(stepped.snappedSliderValue(-5), 2, accuracy: 1e-9)
+        XCTAssertEqual(stepped.formattedSliderValue(4), "4")
+
+        let continuous = StillSetting.slider("Scale", key: "scale", range: 0.5...1.5, default: 1.0)
+        XCTAssertEqual(continuous.formattedSliderValue(1.25), "1.25")
+
+        let custom = StillSetting.slider("Zoom", key: "zoom", range: 0...1, default: 0.5) {
+            "\(Int(($0 * 100).rounded()))%"
+        }
+        XCTAssertEqual(custom.formattedSliderValue(0.75), "75%")
+    }
+
+    // MARK: - Host lifecycle, mode switching and memory cleanup
+
+    func testHostRestoresMigratedModeSwitchesCleanlyAndDeallocates() {
+        defaults.set("beta", forKey: "legacy.mode")
+
+        final class AlphaMode: StillGameMode {
+            static let id = "alpha"
+            let title = "Alpha"
+            var beginCount = 0
+            var endCount = 0
+            func makeGameView(context: StillModeContext) -> UIView { UIView() }
+            func begin() { beginCount += 1 }
+            func end() { endCount += 1 }
+        }
+
+        final class BetaMode: StillGameMode {
+            static let id = "beta"
+            let title = "Beta"
+            var beginCount = 0
+            var endCount = 0
+            func makeGameView(context: StillModeContext) -> UIView { UIView() }
+            func begin() { beginCount += 1 }
+            func end() { endCount += 1 }
+        }
+
+        final class TestGame: StillGame {
+            let name = "TestGame"
+            let about = "Test"
+            let modes: [any StillGameMode]
+            init(modes: [any StillGameMode]) { self.modes = modes }
+            func migrateStorage(using migration: StillStorageMigration) {
+                migration.migrateSelectedMode(fromLegacyKey: "legacy.mode")
+            }
+        }
+
+        let alpha = AlphaMode()
+        let beta = BetaMode()
+        weak var weakHost: StillGameHostViewController?
+
+        autoreleasepool {
+            let host = StillGameHostViewController(game: TestGame(modes: [alpha, beta]), store: store)
+            weakHost = host
+            host.loadViewIfNeeded()
+
+            // Migration ran before restoring, so beta is mounted initially.
+            XCTAssertEqual(host.currentMode?.modeID, "beta")
+            XCTAssertEqual(store.selectedModeID, "beta")
+
+            // Switching to the already-active mode is a no-op.
+            XCTAssertFalse(host.prepareModeSwitch(to: beta))
+
+            // Switching to alpha ends beta, persists alpha, mounts and begins alpha.
+            XCTAssertTrue(host.prepareModeSwitch(to: alpha))
+            XCTAssertEqual(beta.endCount, 1)
+            XCTAssertEqual(alpha.beginCount, 1)
+            XCTAssertEqual(host.currentMode?.modeID, "alpha")
+            XCTAssertEqual(store.selectedModeID, "alpha")
+        }
+
+        // Host must not be retained by gesture closures, mode contexts, or subviews.
+        XCTAssertNil(weakHost, "StillGameHostViewController leaked after release")
+    }
 }

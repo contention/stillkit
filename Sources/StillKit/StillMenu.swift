@@ -6,7 +6,7 @@ import UIKit
 // the series gives it one menu, opened by a two-finger tap: the app's logo in the navigation
 // bar, a line about the app, an inset-grouped list (game modes, the current one with its
 // actions on its row, each with its settings if it has any, then how to play), and the
-// version and credits at the foot. See docs/uikit.md, step 6.
+// version and credits at the foot. See docs/uikit.md.
 
 /// The series menu, built and presented internally by `StillGameHost`.
 ///
@@ -34,15 +34,13 @@ struct StillMenu {
         self.footer = footer
     }
 
-    /// A group of rows on one surface, with an optional header above and footer below.
+    /// A group of rows on one surface, with an optional header above.
     struct Section {
         var header: String?
-        var footer: String?
         var items: [Item]
 
-        init(_ header: String? = nil, footer: String? = nil, items: [Item]) {
+        init(_ header: String? = nil, items: [Item]) {
             self.header = header
-            self.footer = footer
             self.items = items
         }
     }
@@ -52,7 +50,6 @@ struct StillMenu {
         enum Kind {
             case choice(detail: String?, isSelected: Bool, actions: [RowAction],
                         settings: (@MainActor () -> UIViewController)?)
-            case action(role: Role, confirmation: Confirmation?)
             case text
             case disabled
         }
@@ -73,12 +70,6 @@ struct StillMenu {
                  handler: action)
         }
 
-        static func action(_ title: String, role: Role = .normal, confirmation: Confirmation? = nil,
-                           action: @escaping @MainActor () -> Void) -> Item {
-            Item(title: title, kind: .action(role: role, confirmation: confirmation),
-                 beforeClose: nil, handler: action)
-        }
-
         static func text(_ text: String) -> Item {
             Item(title: text, kind: .text, beforeClose: nil, handler: nil)
         }
@@ -95,41 +86,15 @@ struct StillMenu {
         /// An SF Symbol name, such as "arrow.uturn.backward" for undo.
         var symbol: String
         /// The question asked first, for an action that loses progress.
-        var confirmation: Confirmation?
+        var confirmation: StillConfirmation?
         let handler: @MainActor () -> Void
 
-        init(_ title: String, symbol: String, confirmation: Confirmation? = nil,
+        init(_ title: String, symbol: String, confirmation: StillConfirmation? = nil,
              action: @escaping @MainActor () -> Void) {
             self.title = title
             self.symbol = symbol
             self.confirmation = confirmation
             self.handler = action
-        }
-    }
-
-    /// How an action row is drawn.
-    enum Role {
-        /// Tint text.
-        case normal
-        /// Apple's red, for an action that destroys something kept, such as a saved drawing.
-        case destructive
-    }
-
-    /// The question asked before an action that loses progress. Shown as a system action sheet.
-    struct Confirmation {
-        var title: String
-        var message: String?
-        var confirm: String
-        var cancel: String
-        var isDestructive: Bool
-
-        init(_ title: String, message: String? = nil, confirm: String,
-             cancel: String = StillSeriesCopy.cancel, isDestructive: Bool = true) {
-            self.title = title
-            self.message = message
-            self.confirm = confirm
-            self.cancel = cancel
-            self.isDestructive = isDestructive
         }
     }
 
@@ -161,6 +126,13 @@ struct StillMenu {
     }
 }
 
+extension Notification.Name {
+    /// Posted as the series menu is presented.
+    static let stillMenuWillOpen = Notification.Name("StillKit.menuWillOpen")
+    /// Posted once the series menu has gone, however it was closed.
+    static let stillMenuDidClose = Notification.Name("StillKit.menuDidClose")
+}
+
 // MARK: - The menu's screen
 
 @MainActor
@@ -174,7 +146,6 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
     private var collectionView: UICollectionView!
     private var cellRegistration: UICollectionView.CellRegistration<UICollectionViewListCell, StillMenu.Item>!
     private var headerRegistration: UICollectionView.SupplementaryRegistration<UICollectionViewListCell>!
-    private var footerRegistration: UICollectionView.SupplementaryRegistration<UICollectionViewListCell>!
     private var aboutRegistration: UICollectionView.SupplementaryRegistration<StillMenuTextView>!
     private var creditsRegistration: UICollectionView.SupplementaryRegistration<StillMenuTextView>!
 
@@ -203,6 +174,11 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
         collectionView.delegate = self
         view.addSubview(collectionView)
         registerViews()
+
+        // Rebuild choice accessories and attributed markdown headers/footers on live Dynamic Type changes.
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (vc: StillMenuViewController, _) in
+            vc.collectionView.reloadData()
+        }
     }
 
     private func makeLayout() -> UICollectionViewLayout {
@@ -221,7 +197,6 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
         return UICollectionViewCompositionalLayout(sectionProvider: { index, environment in
             var list = StillList.insetGrouped()
             list.headerMode = sections[index].header == nil ? .none : .supplementary
-            list.footerMode = sections[index].footer == nil ? .none : .supplementary
             return .list(using: list, layoutEnvironment: environment)
         }, configuration: configuration)
     }
@@ -232,7 +207,7 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
         // In a section where any choice has settings, every choice row keeps room for the
         // settings button, so the checkmarks line up. Where any choice has settings or row
         // actions, every choice row draws the same checkmark, for the same reason.
-        func sectionIndices(where test: @escaping (StillMenu.Item.Kind) -> Bool) -> Set<Int> {
+        func sectionIndices(where test: (StillMenu.Item.Kind) -> Bool) -> Set<Int> {
             Set(sections.indices.filter { index in sections[index].items.contains { test($0.kind) } })
         }
         let settingsSections = sectionIndices { kind in
@@ -255,7 +230,7 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                 content.textProperties.color = Still.label
                 content.secondaryTextProperties.font = .preferredFont(forTextStyle: .subheadline)
                 content.secondaryTextProperties.color = Still.labelSecondary
-                content.textToSecondaryTextVerticalPadding = 4
+                content.textToSecondaryTextVerticalPadding = StillSpace.s1
                 content.textProperties.adjustsFontForContentSizeCategory = true
                 content.secondaryTextProperties.adjustsFontForContentSizeCategory = true
                 cell.contentConfiguration = content
@@ -267,11 +242,13 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                 }
                 var open: (@MainActor () -> Void)?
                 if let settings {
-                    open = { self?.showSettings(settings(), for: item.title) }
+                    open = { [weak self] in self?.showSettings(settings(), for: item.title) }
                 }
                 let accessory = StillMenuChoiceAccessory(
                     isSelected: isSelected, title: item.title, actions: actions,
-                    run: { action, source in self?.run(action.handler, confirmation: action.confirmation, from: source) },
+                    run: { [weak self] action, source in
+                        self?.run(action.handler, confirmation: action.confirmation, from: source)
+                    },
                     showsSettingsColumn: settingsSections.contains(indexPath.section),
                     openSettings: open, traits: cell.traitCollection)
                 // The accessory's own width: a standard width would let row actions run over the text.
@@ -280,7 +257,7 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                     reservedLayoutWidth: .actual, maintainsFixedSize: true))]
                 // VoiceOver reads the row as one element, so its buttons are offered as actions.
                 var custom = zip(actions, accessory.actionButtons).map { action, button in
-                    UIAccessibilityCustomAction(name: action.title) { _ in
+                    UIAccessibilityCustomAction(name: action.title) { [weak self, weak button] _ in
                         self?.run(action.handler, confirmation: action.confirmation, from: button)
                         return true
                     }
@@ -292,16 +269,6 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
                     })
                 }
                 cell.accessibilityCustomActions = custom.isEmpty ? nil : custom
-
-            case .action(let role, _):
-                var content = UIListContentConfiguration.cell()
-                content.text = item.title
-                content.textProperties.font = .preferredFont(forTextStyle: .body)
-                content.textProperties.color = role == .destructive ? Still.destructive : Still.tint
-                content.textProperties.adjustsFontForContentSizeCategory = true
-                cell.contentConfiguration = content
-                cell.accessories = []
-                cell.accessibilityTraits = [.button]
 
             case .text:
                 var content = UIListContentConfiguration.cell()
@@ -331,12 +298,6 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
             content.text = sections[indexPath.section].header
             content.textProperties.color = Still.labelSecondary
             header.contentConfiguration = content
-        }
-        footerRegistration = .init(elementKind: UICollectionView.elementKindSectionFooter) { footer, _, indexPath in
-            var content = UIListContentConfiguration.groupedFooter()
-            content.text = sections[indexPath.section].footer
-            content.textProperties.color = Still.labelSecondary
-            footer.contentConfiguration = content
         }
 
         let about = menu.about ?? ""
@@ -371,8 +332,6 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
             collectionView.dequeueConfiguredReusableSupplementary(using: aboutRegistration, for: indexPath)
         case Self.creditsKind:
             collectionView.dequeueConfiguredReusableSupplementary(using: creditsRegistration, for: indexPath)
-        case UICollectionView.elementKindSectionFooter:
-            collectionView.dequeueConfiguredReusableSupplementary(using: footerRegistration, for: indexPath)
         default:
             collectionView.dequeueConfiguredReusableSupplementary(using: headerRegistration, for: indexPath)
         }
@@ -389,16 +348,14 @@ final class StillMenuViewController: UIViewController, UICollectionViewDataSourc
         let item = sections[indexPath.section].items[indexPath.item]
         guard let handler = item.handler else { return }
 
-        var confirmation: StillMenu.Confirmation?
-        if case .action(_, let asked) = item.kind { confirmation = asked }
-        run(handler, beforeClose: item.beforeClose, confirmation: confirmation,
+        run(handler, beforeClose: item.beforeClose, confirmation: nil,
             from: collectionView.cellForItem(at: indexPath))
     }
 
     /// Asks first when there is a confirmation, then closes the menu and acts.
     private func run(_ handler: @escaping @MainActor () -> Void,
                      beforeClose: (@MainActor () -> Void)? = nil,
-                     confirmation: StillMenu.Confirmation?,
+                     confirmation: StillConfirmation?,
                      from source: UIView?) {
         guard let confirmation else {
             close(before: beforeClose, then: handler)
@@ -495,7 +452,7 @@ final class StillMenuChoiceAccessory: UIView {
         configuration.preferredSymbolConfigurationForImage = symbols
         configuration.contentInsets = .zero
         button.configuration = configuration
-        button.accessibilityLabel = "\(title) settings"
+        button.accessibilityLabel = "\(title) \(StillSeriesCopy.settings)"
         if let openSettings {
             button.addAction(UIAction { _ in openSettings() }, for: .primaryActionTriggered)
         } else {
@@ -539,7 +496,8 @@ final class StillMenuChoiceAccessory: UIView {
 /// the credits can be tapped.
 final class StillMenuTextView: UICollectionReusableView {
     private let textView = UITextView()
-    private var insetConstraints: [NSLayoutConstraint] = []
+    private var edgeConstraints: (top: NSLayoutConstraint, leading: NSLayoutConstraint,
+                                  trailing: NSLayoutConstraint, bottom: NSLayoutConstraint)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -551,6 +509,13 @@ final class StillMenuTextView: UICollectionReusableView {
         textView.adjustsFontForContentSizeCategory = true
         textView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(textView)
+
+        let top = textView.topAnchor.constraint(equalTo: topAnchor)
+        let leading = textView.leadingAnchor.constraint(equalTo: leadingAnchor)
+        let trailing = textView.trailingAnchor.constraint(equalTo: trailingAnchor)
+        let bottom = textView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        NSLayoutConstraint.activate([top, leading, trailing, bottom])
+        edgeConstraints = (top, leading, trailing, bottom)
     }
 
     @available(*, unavailable)
@@ -569,182 +534,9 @@ final class StillMenuTextView: UICollectionReusableView {
         textView.attributedText = string
         textView.linkTextAttributes = [.foregroundColor: Still.tint, .underlineStyle: NSUnderlineStyle.single.rawValue]
 
-        NSLayoutConstraint.deactivate(insetConstraints)
-        insetConstraints = [
-            textView.topAnchor.constraint(equalTo: topAnchor, constant: insets.top),
-            textView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: insets.left),
-            textView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -insets.right),
-            textView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -insets.bottom),
-        ]
-        NSLayoutConstraint.activate(insetConstraints)
-    }
-}
-
-// MARK: - Taps
-
-/// A tap with several fingers. The series uses one: a two-finger tap opens the menu. A
-/// mode's settings live in the menu, and undo is a shake (`addStillUndo(action:)`).
-///
-/// It recognises alongside the app's own gestures and never cancels their touches, so a drag
-/// or a flick under one finger carries on. A tap with more fingers than it asks for fails it,
-/// so a three-finger tap never counts as a two-finger one.
-///
-/// VoiceOver keeps multi-finger taps for itself, so give VoiceOver the same things as
-/// accessibility custom actions ("Open menu", and `StillShakeToUndo.accessibilityAction`), and
-/// the magic tap (a two-finger double tap) for opening the menu.
-@MainActor
-final class StillTapGesture: UITapGestureRecognizer, UIGestureRecognizerDelegate {
-    private let action: @MainActor () -> Void
-
-    init(fingers: Int, action: @escaping @MainActor () -> Void) {
-        self.action = action
-        super.init(target: nil, action: nil)
-        addTarget(self, action: #selector(recognized))
-        numberOfTouchesRequired = fingers
-        cancelsTouchesInView = false
-        delegate = self
-    }
-
-    @objc private func recognized() { action() }
-
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
-                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
-        true
-    }
-}
-
-extension UIView {
-    /// Calls `action` when `fingers` fingers tap this view. Internal to `StillGameHost`.
-    @MainActor
-    @discardableResult
-    func addStillTap(fingers: Int, action: @escaping @MainActor () -> Void) -> StillTapGesture {
-        let gesture = StillTapGesture(fingers: fingers, action: action)
-        addGestureRecognizer(gesture)
-        return gesture
-    }
-}
-
-// MARK: - Hints
-
-/// The quiet pebble that teaches the series gestures. Internal to `StillGameHost`.
-@MainActor
-final class StillHintView: UIView {
-    /// How long after `play(_:)` the first message fades in.
-    static let delay: TimeInterval = 3
-    /// How long each message stays.
-    static let duration: TimeInterval = 3
-    /// How long the game hint stays when it also teaches undo: two sentences take longer to read.
-    static let longDuration: TimeInterval = 4.5
-    /// The pause between messages.
-    static let gap: TimeInterval = 0.4
-
-    private let label = UILabel()
-    private var sequence: Task<Void, Never>?
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        // A moment worth noticing, so the soft tint pebble (docs/brand.md, Shape).
-        backgroundColor = Still.tintSoft
-        alpha = 0
-        isUserInteractionEnabled = false
-        isAccessibilityElement = false
-        accessibilityElementsHidden = true
-
-        label.font = .preferredFont(forTextStyle: .footnote)
-        label.adjustsFontForContentSizeCategory = true
-        label.textColor = Still.onTintSoft
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
-
-        // The menu teaches itself once it is open.
-        NotificationCenter.default.addObserver(self, selector: #selector(menuWillOpen),
-                                               name: .stillMenuWillOpen, object: nil)
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: topAnchor, constant: StillSpace.s2),
-            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -StillSpace.s2),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: StillSpace.s4),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -StillSpace.s4),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        // A capsule while it is one line; continuous corners if large text wraps it.
-        stillCorners(min(bounds.height / 2, StillRadius.lg))
-    }
-
-    /// The line that teaches the series gestures when a game begins.
-    static func gameMessage(canUndo: Bool) -> String {
-        let menu = StillSeriesCopy.hintMenu
-        guard canUndo, StillShakeToUndo.isAvailable else { return menu }
-        return menu + " " + StillSeriesCopy.hintUndo
-    }
-
-    /// Teaches the series gestures as a game begins.
-    func playGameHint(canUndo: Bool) {
-        let teachesUndo = canUndo && StillShakeToUndo.isAvailable
-        play([Self.gameMessage(canUndo: canUndo)], holding: teachesUndo ? Self.longDuration : Self.duration)
-    }
-
-    /// Shows each message in turn, after a pause. Replaces any sequence already playing.
-    /// Does nothing while VoiceOver is running.
-    func play(_ messages: [String]) {
-        play(messages, holding: Self.duration)
-    }
-
-    private func play(_ messages: [String], holding: TimeInterval) {
-        stop(animated: false)
-        guard !messages.isEmpty, !UIAccessibility.isVoiceOverRunning else { return }
-        sequence = Task { [weak self] in
-            do {
-                try await Task.sleep(for: .seconds(Self.delay))
-                for message in messages {
-                    guard let self else { return }
-                    self.label.text = message
-                    StillMotion.animate { self.alpha = 1 }
-                    try await Task.sleep(for: .seconds(holding))
-                    StillMotion.animate { self.alpha = 0 }
-                    try await Task.sleep(for: .seconds(Self.gap))
-                }
-            } catch {
-                // Stopped.
-            }
-        }
-    }
-
-    @objc private func menuWillOpen() {
-        guard sequence != nil else { return }
-        stop()
-    }
-
-    /// Ends the sequence: call when the gesture is used, or the screen changes.
-    func stop(animated: Bool = true) {
-        sequence?.cancel()
-        sequence = nil
-        if animated {
-            StillMotion.animate { self.alpha = 0 }
-        } else {
-            alpha = 0
-        }
-    }
-
-    /// A hint view at the bottom centre of `view`, above the safe area, as a toy shows it.
-    static func pinned(to view: UIView) -> StillHintView {
-        let hint = StillHintView()
-        hint.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(hint)
-        NSLayoutConstraint.activate([
-            hint.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            hint.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -StillSpace.s6),
-            hint.widthAnchor.constraint(lessThanOrEqualToConstant: 300),
-            hint.leadingAnchor.constraint(greaterThanOrEqualTo: view.layoutMarginsGuide.leadingAnchor),
-            hint.trailingAnchor.constraint(lessThanOrEqualTo: view.layoutMarginsGuide.trailingAnchor),
-        ])
-        return hint
+        edgeConstraints?.top.constant = insets.top
+        edgeConstraints?.leading.constant = insets.left
+        edgeConstraints?.trailing.constant = -insets.right
+        edgeConstraints?.bottom.constant = -insets.bottom
     }
 }

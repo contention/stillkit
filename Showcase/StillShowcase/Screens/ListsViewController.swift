@@ -15,6 +15,9 @@ final class ListsViewController: UIViewController, UICollectionViewDataSource, U
     private var sliderValue: Float = 0.65
     private var stepperValue = 4
 
+    private let sampleSwitch = UISwitch()
+    private let sampleStepper = UIStepper()
+
     private var collectionView: UICollectionView!
     private var textRegistration: UICollectionView.CellRegistration<UICollectionViewListCell, (String, String?)>!
     private var switchRegistration: UICollectionView.CellRegistration<UICollectionViewListCell, Void>!
@@ -28,17 +31,34 @@ final class ListsViewController: UIViewController, UICollectionViewDataSource, U
         title = "Lists"
         view.backgroundColor = Still.groupedBackground
 
+        configureControls()
+
         var config = StillList.insetGrouped()
         config.headerMode = .supplementary
         let layout = UICollectionViewCompositionalLayout.list(using: config)
 
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-        collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        collectionView.backgroundColor = Still.groupedBackground
-        collectionView.dataSource = self
-        collectionView.delegate = self
-        view.addSubview(collectionView)
+        collectionView = ShowcaseUI.installGroupedCollectionView(in: view, layout: layout,
+                                                                 dataSource: self, delegate: self)
         registerViews()
+    }
+
+    private func configureControls() {
+        sampleSwitch.isOn = switchOn
+        sampleSwitch.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            StillHaptics.touch()
+            self.switchOn = self.sampleSwitch.isOn
+        }, for: .valueChanged)
+
+        sampleStepper.minimumValue = 1
+        sampleStepper.maximumValue = 10
+        sampleStepper.value = Double(stepperValue)
+        sampleStepper.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            StillHaptics.tick()
+            self.stepperValue = Int(self.sampleStepper.value.rounded())
+            self.collectionView.reconfigureItems(at: [IndexPath(item: 2, section: Section.controls.rawValue)])
+        }, for: .valueChanged)
     }
 
     private func registerViews() {
@@ -68,14 +88,8 @@ final class ListsViewController: UIViewController, UICollectionViewDataSource, U
             content.textProperties.numberOfLines = 0
             content.textProperties.adjustsFontForContentSizeCategory = true
             cell.contentConfiguration = content
-            let toggle = UISwitch()
-            toggle.isOn = self.switchOn
-            toggle.addAction(UIAction { [weak self, weak toggle] _ in
-                guard let self, let toggle else { return }
-                StillHaptics.touch()
-                self.switchOn = toggle.isOn
-            }, for: .valueChanged)
-            cell.accessories = [.customView(configuration: .init(customView: toggle, placement: .trailing(),
+            self.sampleSwitch.isOn = self.switchOn
+            cell.accessories = [.customView(configuration: .init(customView: self.sampleSwitch, placement: .trailing(),
                                                                  reservedLayoutWidth: .actual,
                                                                  maintainsFixedSize: true))]
             cell.backgroundConfiguration = StillList.cellBackground()
@@ -116,17 +130,8 @@ final class ListsViewController: UIViewController, UICollectionViewDataSource, U
             content.textProperties.numberOfLines = 0
             content.textProperties.adjustsFontForContentSizeCategory = true
             cell.contentConfiguration = content
-            let stepper = UIStepper()
-            stepper.minimumValue = 1
-            stepper.maximumValue = 10
-            stepper.value = Double(self.stepperValue)
-            stepper.addAction(UIAction { [weak self, weak stepper] _ in
-                guard let self, let stepper else { return }
-                StillHaptics.tick()
-                self.stepperValue = Int(stepper.value.rounded())
-                self.collectionView.reconfigureItems(at: [IndexPath(item: 2, section: Section.controls.rawValue)])
-            }, for: .valueChanged)
-            cell.accessories = [.customView(configuration: .init(customView: stepper, placement: .trailing(),
+            self.sampleStepper.value = Double(self.stepperValue)
+            cell.accessories = [.customView(configuration: .init(customView: self.sampleStepper, placement: .trailing(),
                                                                  reservedLayoutWidth: .actual,
                                                                  maintainsFixedSize: true))]
             cell.backgroundConfiguration = StillList.cellBackground()

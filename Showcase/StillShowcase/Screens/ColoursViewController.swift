@@ -83,12 +83,8 @@ final class ColoursViewController: UIViewController, UICollectionViewDataSource 
         config.headerMode = .supplementary
         let layout = UICollectionViewCompositionalLayout.list(using: config)
 
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-        collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        collectionView.backgroundColor = Still.groupedBackground
-        collectionView.allowsSelection = false
-        collectionView.dataSource = self
-        view.addSubview(collectionView)
+        collectionView = ShowcaseUI.installGroupedCollectionView(in: view, layout: layout,
+                                                                 dataSource: self, allowsSelection: false)
         registerViews()
 
         registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (vc: ColoursViewController, _) in
@@ -256,6 +252,9 @@ private final class ContrastSampleChip: UIView {
         label.textAlignment = .center
         label.font = StillFont.rounded(.subheadline, weight: .semibold)
         label.textColor = foreground
+        label.adjustsFontForContentSizeCategory = true
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.6
         addSubview(label)
     }
 

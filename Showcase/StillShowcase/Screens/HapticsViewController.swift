@@ -12,15 +12,7 @@ final class HapticsViewController: UIViewController {
         title = "Haptics"
         view.backgroundColor = Still.background
 
-        let scrollView = UIScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = StillSpace.s4
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(stack)
+        let stack = ShowcaseUI.installScrollableStack(in: view, spacing: StillSpace.s4, topPadding: StillSpace.s5)
 
         let buttonsRow = UIStackView()
         buttonsRow.axis = .vertical
@@ -39,19 +31,10 @@ final class HapticsViewController: UIViewController {
         buttonsRow.addArrangedSubview(snapButton)
         buttonsRow.addArrangedSubview(tickButton)
 
-        let stageHeading = UILabel()
-        stageHeading.text = "Drag and snap"
-        stageHeading.font = StillFont.rounded(.title3)
-        stageHeading.textColor = Still.label
-        stageHeading.numberOfLines = 0
-        stageHeading.adjustsFontForContentSizeCategory = true
-
-        let note = UILabel()
-        note.text = "Drag the pebble over the three wells. Calls prepare() on drag start, snap() as it locks onto a well, and touch() when released."
-        note.font = .preferredFont(forTextStyle: .subheadline)
-        note.textColor = Still.labelSecondary
-        note.numberOfLines = 0
-        note.adjustsFontForContentSizeCategory = true
+        let stageHeading = ShowcaseUI.makeHeading("Drag and snap")
+        let note = ShowcaseUI.makeNote(
+            "Drag the pebble over the three wells. Calls prepare() on drag start, snap() as it locks onto a well, and touch() when released."
+        )
 
         stage.translatesAutoresizingMaskIntoConstraints = false
         stage.heightAnchor.constraint(equalToConstant: 220).isActive = true
@@ -60,29 +43,15 @@ final class HapticsViewController: UIViewController {
         stack.addArrangedSubview(stageHeading)
         stack.addArrangedSubview(note)
         stack.addArrangedSubview(stage)
-
-        let guide = scrollView.contentLayoutGuide
-        let readable = view.readableContentGuide
-        NSLayoutConstraint.activate([
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-
-            stack.topAnchor.constraint(equalTo: guide.topAnchor, constant: StillSpace.s5),
-            stack.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -StillSpace.s6),
-            stack.leadingAnchor.constraint(equalTo: readable.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: readable.trailingAnchor),
-        ])
     }
 }
 
 @MainActor
 private final class HapticSnapStageView: UIView {
-    private let piece = UIView()
+    private let piece = AdjustablePebbleView()
     private var wells: [UIView] = []
     private var snappedIndex: Int? = 1
-    private var hasPositioned = false
+    private var isDragging = false
 
     private let pieceSize: CGFloat = 52
     private let wellSize: CGFloat = 60
@@ -110,7 +79,11 @@ private final class HapticSnapStageView: UIView {
         piece.isAccessibilityElement = true
         piece.accessibilityLabel = "Draggable pebble"
         piece.accessibilityTraits = .adjustable
+        piece.onAdjust = { [weak self] delta in
+            self?.stepWell(by: delta)
+        }
         addSubview(piece)
+        updateAccessibilityValue()
 
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
         piece.addGestureRecognizer(pan)
@@ -127,9 +100,8 @@ private final class HapticSnapStageView: UIView {
             well.frame = CGRect(x: center.x - wellSize / 2, y: center.y - wellSize / 2,
                                 width: wellSize, height: wellSize)
         }
-        if !hasPositioned {
-            hasPositioned = true
-            piece.center = positions[1]
+        if !isDragging, let index = snappedIndex, index < positions.count {
+            piece.center = positions[index]
         }
     }
 
@@ -141,12 +113,32 @@ private final class HapticSnapStageView: UIView {
         ]
     }
 
+    private func stepWell(by delta: Int) {
+        let current = snappedIndex ?? 1
+        let next = min(max(current + delta, 0), wells.count - 1)
+        guard next != current else { return }
+        snappedIndex = next
+        updateAccessibilityValue()
+        StillHaptics.snap()
+        let target = wellCenters()[next]
+        StillMotion.animate { self.piece.center = target }
+    }
+
+    private func updateAccessibilityValue() {
+        if let index = snappedIndex {
+            piece.accessibilityValue = "Well \(index + 1) of \(wells.count)"
+        } else {
+            piece.accessibilityValue = nil
+        }
+    }
+
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         let point = gesture.location(in: self)
         let centers = wellCenters()
 
         switch gesture.state {
         case .began:
+            isDragging = true
             StillHaptics.prepare()
             setLifted(true)
         case .changed:
@@ -165,6 +157,7 @@ private final class HapticSnapStageView: UIView {
                 )
             }
         case .ended, .cancelled:
+            isDragging = false
             setLifted(false)
             let nearest = centers.enumerated().min {
                 hypot($0.element.x - piece.center.x, $0.element.y - piece.center.y)
@@ -172,6 +165,7 @@ private final class HapticSnapStageView: UIView {
             }
             if let nearest {
                 snappedIndex = nearest.offset
+                updateAccessibilityValue()
                 StillHaptics.touch()
                 StillMotion.animate { self.piece.center = nearest.element }
             }
@@ -189,5 +183,18 @@ private final class HapticSnapStageView: UIView {
             self.piece.layer.shadowRadius = lifted ? 12 : 0
             self.piece.layer.shadowOffset = lifted ? CGSize(width: 0, height: 8) : .zero
         }
+    }
+}
+
+@MainActor
+private final class AdjustablePebbleView: UIView {
+    var onAdjust: ((Int) -> Void)?
+
+    override func accessibilityIncrement() {
+        onAdjust?(1)
+    }
+
+    override func accessibilityDecrement() {
+        onAdjust?(-1)
     }
 }

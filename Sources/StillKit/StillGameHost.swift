@@ -103,7 +103,7 @@ final class StillGameHostViewController: UIViewController {
     private let store: StillSettingsStore
     private let modes: [any StillGameMode]
 
-    private var currentMode: (any StillGameMode)?
+    private(set) var currentMode: (any StillGameMode)?
     private var currentGameView: UIView?
     private var modeContexts: [String: StillModeContext] = [:]
 
@@ -148,25 +148,11 @@ final class StillGameHostViewController: UIViewController {
         // Run any one-time storage migration before reading saved mode or settings.
         game.migrateStorage(using: StillStorageMigration(store: store))
 
-        // Build per-mode contexts.
-        for mode in modes {
-            let reader = StillSettingsReader(modeID: mode.modeID, settings: mode.settings, store: store)
-            modeContexts[mode.modeID] = StillModeContext(settings: reader) { [weak self] in
-                self?.setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
-            }
-        }
-
         // Full-screen container for the active mode's view.
         gameContainer.backgroundColor = Still.canvas
-        gameContainer.translatesAutoresizingMaskIntoConstraints = false
         gameContainer.onMagicTap = { [weak self] in self?.openMenu() ?? false }
         view.addSubview(gameContainer)
-        NSLayoutConstraint.activate([
-            gameContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            gameContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            gameContainer.topAnchor.constraint(equalTo: view.topAnchor),
-            gameContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
+        gameContainer.pinToEdges(of: view)
 
         // Two-finger tap opens the series menu.
         view.addStillTap(fingers: 2) { [weak self] in
@@ -182,9 +168,8 @@ final class StillGameHostViewController: UIViewController {
         _ = hintView
 
         // Restore the previously selected mode, or fall back to the first mode.
-        let restored = restoredMode()
-        if let restored {
-            mountMode(restored, animated: false, startImmediately: false)
+        if let restored = restoredMode() {
+            mountMode(restored)
         }
 
         // Prepare the cold-launch splash over the mounted game view.
@@ -196,6 +181,16 @@ final class StillGameHostViewController: UIViewController {
         guard !hasPlayedSplash else { return }
         hasPlayedSplash = true
         playSplash()
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if isMovingFromParent || isBeingDismissed {
+            splashTask?.cancel()
+            splashTask = nil
+            hintView.stop(animated: false)
+            currentMode?.end()
+        }
     }
 
     override func accessibilityPerformMagicTap() -> Bool {
@@ -226,36 +221,31 @@ final class StillGameHostViewController: UIViewController {
 
     /// Swaps the active mode immediately behind the dismissing menu sheet so the previous
     /// mode never flashes as the sheet slides away.
-    private func prepareModeSwitch(to nextMode: any StillGameMode) -> Bool {
+    @discardableResult
+    func prepareModeSwitch(to nextMode: any StillGameMode) -> Bool {
         guard currentMode?.modeID != nextMode.modeID else { return false }
         currentMode?.end()
         store.selectedModeID = nextMode.modeID
-        mountMode(nextMode, animated: false, startImmediately: false)
+        mountMode(nextMode)
         nextMode.begin()
         return true
     }
 
     /// Runs once the menu sheet has finished dismissing after a mode switch.
-    private func completeModeSwitch(to nextMode: any StillGameMode) {
+    func completeModeSwitch(to nextMode: any StillGameMode) {
         hintView.playGameHint(canUndo: nextMode.supportsUndo)
         if let gameView = currentGameView {
             UIAccessibility.post(notification: .screenChanged, argument: gameView)
         }
     }
 
-    private func mountMode(_ mode: any StillGameMode, animated: Bool, startImmediately: Bool) {
+    private func mountMode(_ mode: any StillGameMode) {
         let previousView = currentGameView
         let ctx = context(for: mode)
         let nextView = mode.makeGameView(context: ctx)
-        nextView.translatesAutoresizingMaskIntoConstraints = false
 
         gameContainer.addSubview(nextView)
-        NSLayoutConstraint.activate([
-            nextView.leadingAnchor.constraint(equalTo: gameContainer.leadingAnchor),
-            nextView.trailingAnchor.constraint(equalTo: gameContainer.trailingAnchor),
-            nextView.topAnchor.constraint(equalTo: gameContainer.topAnchor),
-            nextView.bottomAnchor.constraint(equalTo: gameContainer.bottomAnchor),
-        ])
+        nextView.pinToEdges(of: gameContainer)
 
         currentMode = mode
         currentGameView = nextView
@@ -265,24 +255,7 @@ final class StillGameHostViewController: UIViewController {
 
         view.layoutIfNeeded()
         StillGameViewAuditor.assertClean(viewTree: nextView, window: view.window, modeID: mode.modeID)
-
-        if animated, let previousView {
-            nextView.alpha = 0
-            StillMotion.animate({
-                nextView.alpha = 1
-                previousView.alpha = 0
-            }, completion: { _ in
-                previousView.removeFromSuperview()
-            })
-        } else {
-            previousView?.removeFromSuperview()
-        }
-
-        if startImmediately {
-            mode.begin()
-            hintView.playGameHint(canUndo: mode.supportsUndo)
-            UIAccessibility.post(notification: .screenChanged, argument: nextView)
-        }
+        previousView?.removeFromSuperview()
     }
 
     private func updateVoiceOverActions(for mode: any StillGameMode, gameView: UIView) {
@@ -342,18 +315,12 @@ final class StillGameHostViewController: UIViewController {
 
         let backdrop = UIView()
         backdrop.backgroundColor = Still.canvas
-        backdrop.translatesAutoresizingMaskIntoConstraints = false
         backdrop.isAccessibilityElement = true
         backdrop.accessibilityLabel = game.name
         backdrop.accessibilityTraits = .header
         backdrop.accessibilityViewIsModal = true
         view.addSubview(backdrop)
-        NSLayoutConstraint.activate([
-            backdrop.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            backdrop.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            backdrop.topAnchor.constraint(equalTo: view.topAnchor),
-            backdrop.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
+        backdrop.pinToEdges(of: view)
 
         let stack = UIStackView()
         stack.axis = .vertical
@@ -400,16 +367,14 @@ final class StillGameHostViewController: UIViewController {
 
         UIAccessibility.post(notification: .screenChanged, argument: backdrop)
 
-        splashTask = Task { @MainActor [weak self] in
-            guard let self else { return }
+        let fadeIn = UIAccessibility.isReduceMotionEnabled
+            ? StillSplashTiming.reduceMotionFade
+            : StillSplashTiming.fadeIn
 
-            let fadeIn = UIAccessibility.isReduceMotionEnabled
-                ? StillSplashTiming.reduceMotionFade
-                : StillSplashTiming.fadeIn
-
+        splashTask = Task { @MainActor [weak self, weak contentStack] in
             await withCheckedContinuation { continuation in
                 UIView.animate(withDuration: fadeIn, delay: 0, options: [.curveEaseInOut], animations: {
-                    contentStack.alpha = 1
+                    contentStack?.alpha = 1
                 }, completion: { _ in
                     continuation.resume()
                 })
@@ -421,7 +386,8 @@ final class StillGameHostViewController: UIViewController {
                 return
             }
 
-            guard !Task.isCancelled else { return }
+            guard let self, !Task.isCancelled else { return }
+            self.splashTask = nil
             self.transitionSplashToGame()
         }
     }
@@ -440,11 +406,15 @@ final class StillGameHostViewController: UIViewController {
 
         var landing: StillSplashLanding?
         var startFrameInHost: CGRect = .zero
+        var targetFrameInHost: CGRect = .zero
 
         if let carriedView, let gameView, let mode {
             startFrameInHost = carriedView.convert(carriedView.bounds, to: view)
             let startFrameInGame = carriedView.convert(carriedView.bounds, to: gameView)
             landing = mode.splashLanding(in: gameView, carriedFrame: startFrameInGame)
+            if let landing {
+                targetFrameInHost = gameView.convert(landing.targetFrame, to: view)
+            }
         }
 
         let canCarry = !UIAccessibility.isReduceMotionEnabled
@@ -453,8 +423,10 @@ final class StillGameHostViewController: UIViewController {
             && gameView != nil
             && startFrameInHost.width > 0
             && startFrameInHost.height > 0
+            && targetFrameInHost.width > 0
+            && targetFrameInHost.height > 0
 
-        if canCarry, let carriedView, let landing, let gameView {
+        if canCarry, let carriedView, let landing {
             // Detach the carried element onto the host view so the rest of the splash can fade.
             carriedView.removeFromSuperview()
             carriedView.translatesAutoresizingMaskIntoConstraints = true
@@ -462,7 +434,6 @@ final class StillGameHostViewController: UIViewController {
             view.addSubview(carriedView)
 
             landing.targetView?.alpha = 0
-            let targetFrameInHost = gameView.convert(landing.targetFrame, to: view)
             let scaleX = targetFrameInHost.width / startFrameInHost.width
             let scaleY = targetFrameInHost.height / startFrameInHost.height
 
@@ -480,11 +451,7 @@ final class StillGameHostViewController: UIViewController {
                 if carriedView.superview === self.view {
                     carriedView.removeFromSuperview()
                 }
-                backdrop.removeFromSuperview()
-                self.splashBackdrop = nil
-                self.splashContentStack = nil
-                self.splashData = nil
-                self.finishSplash()
+                self.cleanUpAndFinishSplash()
             })
         } else {
             // Reduce Motion, or no landing place: plain crossfade with no movement.
@@ -494,14 +461,17 @@ final class StillGameHostViewController: UIViewController {
             StillMotion.animate({
                 backdrop.alpha = 0
             }, completion: { [weak self] _ in
-                guard let self else { return }
-                backdrop.removeFromSuperview()
-                self.splashBackdrop = nil
-                self.splashContentStack = nil
-                self.splashData = nil
-                self.finishSplash()
+                self?.cleanUpAndFinishSplash()
             })
         }
+    }
+
+    private func cleanUpAndFinishSplash() {
+        splashBackdrop?.removeFromSuperview()
+        splashBackdrop = nil
+        splashContentStack = nil
+        splashData = nil
+        finishSplash()
     }
 
     private func finishSplash() {
@@ -538,12 +508,8 @@ final class StillGameHostViewController: UIViewController {
                 })
             }
             for action in mode.actions {
-                let confirmation: StillMenu.Confirmation? = action.confirmation.map {
-                    StillMenu.Confirmation($0.title, message: $0.message, confirm: $0.confirm,
-                                           cancel: $0.cancel, isDestructive: $0.isDestructive)
-                }
                 rowActions.append(StillMenu.RowAction(action.title, symbol: action.symbol,
-                                                      confirmation: confirmation, action: action.handler))
+                                                      confirmation: action.confirmation, action: action.handler))
             }
         }
 

@@ -55,9 +55,12 @@ private final class PlainCanvasView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        if !hasPositioned, bounds.width > 0, bounds.height > 0 {
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        if !hasPositioned {
             hasPositioned = true
             pebble.center = CGPoint(x: bounds.midX, y: bounds.midY)
+        } else {
+            pebble.center = clampedPoint(pebble.center)
         }
     }
 
@@ -71,14 +74,17 @@ private final class PlainCanvasView: UIView {
         }
     }
 
-    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        let location = gesture.location(in: self)
+    private func clampedPoint(_ point: CGPoint) -> CGPoint {
         let inset = safeAreaInsets
         let half = pebbleDiameter / 2 + StillSpace.s4
-        let clamped = CGPoint(
-            x: min(max(location.x, inset.left + half), bounds.width - inset.right - half),
-            y: min(max(location.y, inset.top + half), bounds.height - inset.bottom - half)
+        return CGPoint(
+            x: min(max(point.x, inset.left + half), bounds.width - inset.right - half),
+            y: min(max(point.y, inset.top + half), bounds.height - inset.bottom - half)
         )
+    }
+
+    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        let clamped = clampedPoint(gesture.location(in: self))
 
         switch gesture.state {
         case .began:
